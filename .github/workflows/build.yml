@@ -1,0 +1,43 @@
+name: Проверка и сборка Windows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Получить исходный код
+        uses: actions/checkout@v7.0.1
+      - name: Подготовить .NET SDK
+        uses: actions/setup-dotnet@v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Восстановить зависимости
+        run: dotnet restore tests/RussianCertMonitor.Tests/RussianCertMonitor.Tests.csproj
+      - name: Проверить каталог и классификацию
+        shell: pwsh
+        run: |
+          dotnet run --project tests/RussianCertMonitor.Tests -c Release --no-restore -- --catalog
+          if ($LASTEXITCODE -ne 0) { throw 'Проверка справочника не пройдена.' }
+          dotnet run --project tests/RussianCertMonitor.Tests -c Release --no-build -- --stage2
+          if ($LASTEXITCODE -ne 0) { throw 'Проверка классификатора не пройдена.' }
+          dotnet run --project tests/RussianCertMonitor.Tests -c Release --no-build -- --logging
+          if ($LASTEXITCODE -ne 0) { throw 'Проверка диагностики не пройдена.' }
+      - name: Проверить интеграции и собрать дистрибутив
+        shell: powershell
+        run: .\package_release.ps1
+      - name: Сохранить дистрибутив
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: RussianCertMonitor-win-x64
+          path: dist/RussianCertMonitor-*-win-x64.zip
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "sourceDate": "2026-10-15",
+  "sourceDescription": "Публичный справочник российских удостоверяющих центров.",
+  "certificates": [
+    {
+      "certificateId": "8FF915CCAB7BC16F8C5C8099D53E0E115B3AEC2F",
+      "name": "Russian Trusted Root CA",
+      "affiliation": "russian",
+      "subject": "CN=Russian Trusted Root CA, O=The Ministry of Digital Development and Communications, C=RU",
+      "issuer": "CN=Russian Trusted Root CA, O=The Ministry of Digital Development and Communications, C=RU",
+      "validFrom": "2022-03-02",
+      "validTo": "2032-02-28"
+    },
+    {
+      "certificateId": "335D43F53451B781535FF3882DF713D3C14F8A01",
+      "name": "Russian Trusted Sub CA",
+      "affiliation": "russian",
+      "subject": "CN=Russian Trusted Sub CA, O=The Ministry of Digital Development and Communications, C=RU",
+      "issuer": "CN=Russian Trusted Root CA, O=The Ministry of Digital Development and Communications, C=RU",
+      "validFrom": "2022-03-02",
+      "validTo": "2027-03-06"
+    },
+    {
+      "certificateId": "9FFA4E5649FF21B471AED34FBE0EEC0C235283CA",
+      "name": "АО \"ГНИВЦ\"",
+      "affiliation": "russian",
+      "subject": "CN=\"АО \"\"ГНИВЦ\"\"\", O=\"АО \"\"ГНИВЦ\"\"\", STREET=\"Походный проезд, домовладение 3, строение 1\", L=Москва, S=77 г.Москва, C=RU, ИНН=007733284010, ОГРН=1167746447461, E=uc@gnivc.ru",
+      "issuer": "CN=Минкомсвязь России, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"улица Тверская, дом 7\", L=г. Москва, S=77 Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2020-01-21",
+      "validTo": "2035-01-21"
+    },
+    {
+      "certificateId": "67B311AFB1A8006A20CB1D50DC27AFA6BD396658",
+      "name": "АО «ГНИВЦ»",
+      "affiliation": "russian",
+      "subject": "CN=АО «ГНИВЦ», O=АО «ГНИВЦ», OU=Филиал АО «ГНИВЦ» в СФО, STREET=\"ул. Гагарина, д. 52, пом. 153\", L=г. Кемерово, S=42 Кемеровская область, C=RU, ИНН=007733284010, ОГРН=1167746447461, E=uc@sfo.gnivc.ru",
+      "issuer": "CN=Минкомсвязь России, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"улица Тверская, дом 7\", L=г. Москва, S=77 Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2020-01-21",
+      "validTo": "2035-01-21"
+    },
+    {
+      "certificateId": "EF774890BDB325AA649032F7A16305DBAAC5943F",
+      "name": "Казначейство России",
+      "affiliation": "russian",
+      "subject": "CN=Казначейство России, O=Казначейство России, C=RU, L=г. Москва, STREET=\"Большой Златоустинский переулок, д. 6, строение 1\", ОГРН=1047797019830, ИНН ЮЛ=7710568760, S=77 Москва, E=uc_fk@roskazna.ru",
+      "issuer": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "validFrom": "2023-03-21",
+      "validTo": "2038-03-21"
+    },
+    {
+      "certificateId": "0B48B8D07D142A5B45E9B0E8C52186687D75E58E",
+      "name": "Казначейство России",
+      "affiliation": "russian",
+      "subject": "CN=Казначейство России, O=Казначейство России, C=RU, L=г. Москва, STREET=\"Большой Златоустинский переулок, д. 6, строение 1\", ОГРН=1047797019830, ИНН ЮЛ=7710568760, S=77 Москва, E=uc_fk@roskazna.ru",
+      "issuer": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "validFrom": "2022-01-10",
+      "validTo": "2037-01-10"
+    },
+    {
+      "certificateId": "59064DECEBC5145CC1BE8465C292CBE2EF83B31D",
+      "name": "Минцифры России НУЦ подчиненный",
+      "affiliation": "russian",
+      "subject": "CN=Минцифры России НУЦ подчиненный, O=Минцифры России, C=RU, S=77 Москва, L=г. Москва, STREET=\"Пресненская набережная, дом 10, строение 2\", ОГРН=1047702026701, ИНН ЮЛ=7710474375",
+      "issuer": "CN=Минцифры России НУЦ корневой, O=Минцифры России, C=RU, S=77 Москва, L=г. Москва, STREET=\"Пресненская набережная, дом 10, строение 2\", ОГРН=1047702026701, ИНН ЮЛ=7710474375",
+      "validFrom": "2025-05-28",
+      "validTo": "2030-05-27"
+    },
+    {
+      "certificateId": "D24B37FCFBB979D2D4A5D1549EC4E2029D15D8A2",
+      "name": "ООО \"КРИПТО-ПРО\"",
+      "affiliation": "russian",
+      "subject": "CN=\"ООО \"\"КРИПТО-ПРО\"\"\", O=\"ООО \"\"КРИПТО-ПРО\"\"\", L=Москва, S=г. Москва, C=RU, E=qca@cryptopro.ru, STREET=ул. Сущёвский вал д. 18, ИНН=007717107991, ОГРН=1037700085444",
+      "issuer": "CN=УЦ 1 ИС ГУЦ, C=RU, S=77 г. Москва, L=Москва, O=Минкомсвязь России, STREET=125375 г. Москва ул. Тверская д.7, E=dit@minsvyaz.ru, ОГРН=1047702026701, ИНН=007710474375",
+      "validFrom": "2016-05-10",
+      "validTo": "2026-05-10"
+    },
+    {
+      "certificateId": "1B4158B9A7399FD8B90AE8A06FC676FB0624F97E",
+      "name": "ООО \"КРИПТО-ПРО\"",
+      "affiliation": "russian",
+      "subject": "CN=\"ООО \"\"КРИПТО-ПРО\"\"\", O=\"ООО \"\"КРИПТО-ПРО\"\"\", L=Москва, S=г. Москва, C=RU, E=qca@cryptopro.ru, STREET=ул. Сущёвский вал д. 18, ИНН=007717107991, ОГРН=1037700085444",
+      "issuer": "CN=УЦ 1 ИС ГУЦ, C=RU, S=77 г. Москва, L=Москва, O=Минкомсвязь России, STREET=125375 г. Москва ул. Тверская д.7, E=dit@minsvyaz.ru, ОГРН=1047702026701, ИНН=007710474375",
+      "validFrom": "2016-10-24",
+      "validTo": "2026-10-24"
+    },
+    {
+      "certificateId": "E5AA1938ED28E003B7FEFEF4EAAE4CE7A979A479",
+      "name": "Федеральная налоговая служба",
+      "affiliation": "russian",
+      "subject": "CN=Федеральная налоговая служба, O=Федеральная налоговая служба, STREET=\"ул. Неглинная, д. 23\", L=г. Москва, S=77 Москва, C=RU, ОГРН=1047707030513, E=uc@tax.gov.ru, ИНН ЮЛ=7707329152",
+      "issuer": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "validFrom": "2022-04-19",
+      "validTo": "2037-04-19"
+    },
+    {
+      "certificateId": "A495D499551DE7F995C27A60426D38688EC75E89",
+      "name": "Федеральная налоговая служба",
+      "affiliation": "russian",
+      "subject": "CN=Федеральная налоговая служба, O=Федеральная налоговая служба, OU=УЦ ЮЛ, STREET=\"ул. Неглинная, д. 23\", L=г. Москва, S=77 Москва, C=RU, ИНН=007707329152, ОГРН=1047707030513, E=uc@nalog.ru",
+      "issuer": "CN=Минкомсвязь России, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"улица Тверская, дом 7\", L=г. Москва, S=77 Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2019-12-26",
+      "validTo": "2034-12-26"
+    },
+    {
+      "certificateId": "7AA38B02798153F66A339E108D83D9D3A5A2BD6A",
+      "name": "Федеральная налоговая служба",
+      "affiliation": "russian",
+      "subject": "CN=Федеральная налоговая служба, O=Федеральная налоговая служба, OU=УЦ ИП, STREET=\"ул. Неглинная, д. 23\", L=г. Москва, S=77 Москва, C=RU, ИНН=007707329152, ОГРН=1047707030513, E=uc@nalog.ru",
+      "issuer": "CN=Минкомсвязь России, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"улица Тверская, дом 7\", L=г. Москва, S=77 Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2019-12-26",
+      "validTo": "2034-12-26"
+    },
+    {
+      "certificateId": "24A2CD23CC4E75EC695031B18054F7683FDF1E86",
+      "name": "Федеральная налоговая служба",
+      "affiliation": "russian",
+      "subject": "CN=Федеральная налоговая служба, O=Федеральная налоговая служба, STREET=\"ул. Неглинная, д. 23\", L=г. Москва, S=77 Москва, C=RU, ОГРН=1047707030513, E=uc@tax.gov.ru, ИНН ЮЛ=7707329152",
+      "issuer": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "validFrom": "2023-07-21",
+      "validTo": "2038-07-21"
+    },
+    {
+      "certificateId": "63C41988B32303D6ECF9915699FC34D07D155B01",
+      "name": "Федеральное казначейство",
+      "affiliation": "russian",
+      "subject": "CN=Федеральное казначейство, O=Федеральное казначейство, C=RU, L=Москва, STREET=\"Большой Златоустинский переулок, д. 6, строение 1\", ОГРН=1047797019830, ИНН=007710568760, S=г. Москва, E=uc_fk@roskazna.ru",
+      "issuer": "CN=Минкомсвязь России, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"улица Тверская, дом 7\", L=г. Москва, S=77 Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2021-04-13",
+      "validTo": "2036-04-13"
+    },
+    {
+      "certificateId": "13877A8BD34589567F9B9AFF6498026C0C29C617",
+      "name": "ФНС России",
+      "affiliation": "russian",
+      "subject": "CN=ФНС России, O=Федеральная налоговая служба, STREET=\"ул. Неглинная, д. 23\", L=Москва, S=г. Москва, C=RU, ИНН=007707329152, ОГРН=1047707030513, E=mns10625@nalog.ru",
+      "issuer": "CN=УЦ 1 ИС ГУЦ, C=RU, S=77 г. Москва, L=Москва, O=Минкомсвязь России, STREET=125375 г. Москва ул. Тверская д.7, E=dit@minsvyaz.ru, ОГРН=1047702026701, ИНН=007710474375",
+      "validFrom": "2017-02-08",
+      "validTo": "2026-12-07"
+    },
+    {
+      "certificateId": "EDB75A6C7C13B62F116F9ACD63E0CE60132E414D",
+      "name": "Центральный банк Российской Федерации",
+      "affiliation": "russian",
+      "subject": "ИНН ЮЛ=7702235133, ОГРН=1037700013020, CN=Центральный банк Российской Федерации, O=Банк России, STREET=\"ул. Неглинная, д. 12\", L=г. Москва, S=77 г. Москва, C=RU",
+      "issuer": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "validFrom": "2023-07-21",
+      "validTo": "2038-07-21"
+    },
+    {
+      "certificateId": "AFF05C9E2464941E7EC2AB15C91539360B79AA9D",
+      "name": "Минкомсвязь России",
+      "affiliation": "russian",
+      "subject": "CN=Минкомсвязь России, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"улица Тверская, дом 7\", L=г. Москва, S=77 Москва, C=RU, E=dit@minsvyaz.ru",
+      "issuer": "CN=Минкомсвязь России, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"улица Тверская, дом 7\", L=г. Москва, S=77 Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2021-07-02",
+      "validTo": "2039-07-02"
+    },
+    {
+      "certificateId": "4BC6DC14D97010C41A26E058AD851F81C842415A",
+      "name": "Минкомсвязь России",
+      "affiliation": "russian",
+      "subject": "CN=Минкомсвязь России, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"улица Тверская, дом 7\", L=г. Москва, S=77 Москва, C=RU, E=dit@minsvyaz.ru",
+      "issuer": "CN=Минкомсвязь России, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"улица Тверская, дом 7\", L=г. Москва, S=77 Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2018-07-06",
+      "validTo": "2036-07-01"
+    },
+    {
+      "certificateId": "9EC1A7DD438D8D647AC40976FC85C33F5D0FBA2B",
+      "name": "Минцифры России",
+      "affiliation": "russian",
+      "subject": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "issuer": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "validFrom": "2025-12-17",
+      "validTo": "2043-12-17"
+    },
+    {
+      "certificateId": "2FDEDE3B528B3DD0CBAD26D1628F40A5AB596F2F",
+      "name": "Минцифры России",
+      "affiliation": "russian",
+      "subject": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "issuer": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "validFrom": "2026-02-02",
+      "validTo": "2044-02-02"
+    },
+    {
+      "certificateId": "2F0CB09BE3550EF17EC4F29C90ABD18BFCAAD63A",
+      "name": "Минцифры России",
+      "affiliation": "russian",
+      "subject": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "issuer": "CN=Минцифры России, ИНН ЮЛ=7710474375, ОГРН=1047702026701, O=Минцифры России, STREET=\"Пресненская набережная, дом 10, строение 2\", L=г. Москва, S=77 Москва, C=RU, E=dit@digital.gov.ru",
+      "validFrom": "2022-01-08",
+      "validTo": "2040-01-08"
+    },
+    {
+      "certificateId": "656F78A4649A650E54043043B1C5EEEC128704A9",
+      "name": "Минцифры России НУЦ корневой",
+      "affiliation": "russian",
+      "subject": "CN=Минцифры России НУЦ корневой, O=Минцифры России, C=RU, S=77 Москва, L=г. Москва, STREET=\"Пресненская набережная, дом 10, строение 2\", ОГРН=1047702026701, ИНН ЮЛ=7710474375",
+      "issuer": "CN=Минцифры России НУЦ корневой, O=Минцифры России, C=RU, S=77 Москва, L=г. Москва, STREET=\"Пресненская набережная, дом 10, строение 2\", ОГРН=1047702026701, ИНН ЮЛ=7710474375",
+      "validFrom": "2025-05-28",
+      "validTo": "2040-05-24"
+    },
+    {
+      "certificateId": "0884889D00F1FF2C773BC5DFB42F41DDDDEED492",
+      "name": "НУЦ России",
+      "affiliation": "russian",
+      "subject": "STREET=\"Набережная Пресненская, дом 10, строение 2\", S=77 г.Москва, L=г. Москва, C=RU, ОГРН=1047702026701, ИНН ЮЛ=7710474375, O=Минцифры России, CN=НУЦ России",
+      "issuer": "STREET=\"Набережная Пресненская, дом 10, строение 2\", S=77 г.Москва, L=г. Москва, C=RU, ОГРН=1047702026701, ИНН ЮЛ=7710474375, O=Минцифры России, CN=НУЦ России",
+      "validFrom": "2022-03-01",
+      "validTo": "2037-02-25"
+    },
+    {
+      "certificateId": "E96A4EB2E5CECB573478045CC3B66B53BABF4786",
+      "name": "CryptoPro GOST Root CA",
+      "affiliation": "russian",
+      "subject": "CN=CryptoPro GOST Root CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ОГРН=1037700085444, ИНН ЮЛ=7717107991",
+      "issuer": "CN=CryptoPro GOST Root CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ОГРН=1037700085444, ИНН ЮЛ=7717107991",
+      "validFrom": "2025-12-31",
+      "validTo": "2040-12-31"
+    },
+    {
+      "certificateId": "E5F6A73352FCD087A4C574717297B23D51DDDF95",
+      "name": "CryptoPro GOST Root CA",
+      "affiliation": "russian",
+      "subject": "CN=CryptoPro GOST Root CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ИНН=007717107991, ОГРН=1037700085444",
+      "issuer": "CN=CryptoPro GOST Root CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ИНН=007717107991, ОГРН=1037700085444",
+      "validFrom": "2022-12-19",
+      "validTo": "2037-12-19"
+    },
+    {
+      "certificateId": "34E21FC04D3576B0ADA81FD081955E2778291CC5",
+      "name": "CryptoPro GOST Root CA",
+      "affiliation": "russian",
+      "subject": "CN=CryptoPro GOST Root CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ИНН=007717107991, ОГРН=1037700085444",
+      "issuer": "CN=CryptoPro GOST Root CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ИНН=007717107991, ОГРН=1037700085444",
+      "validFrom": "2018-11-15",
+      "validTo": "2033-11-15"
+    },
+    {
+      "certificateId": "F6B88598FF04D18C8132CFB074D9FB051CEC8A82",
+      "name": "CryptoPro TLS CA",
+      "affiliation": "russian",
+      "subject": "CN=CryptoPro TLS CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ИНН=007717107991, ОГРН=1037700085444",
+      "issuer": "CN=CryptoPro GOST Root CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ИНН=007717107991, ОГРН=1037700085444",
+      "validFrom": "2018-11-16",
+      "validTo": "2028-11-16"
+    },
+    {
+      "certificateId": "EE750513312F5B90B36CB7DD2ADAD7397CB4F8A0",
+      "name": "CryptoPro TLS CA",
+      "affiliation": "russian",
+      "subject": "CN=CryptoPro TLS CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ОГРН=1037700085444, ИНН ЮЛ=7717107991",
+      "issuer": "CN=CryptoPro GOST Root CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ИНН=007717107991, ОГРН=1037700085444",
+      "validFrom": "2022-12-19",
+      "validTo": "2032-12-19"
+    },
+    {
+      "certificateId": "4E09E2EB25570944FC104322B5CD1643597B88F6",
+      "name": "CryptoPro TLS CA",
+      "affiliation": "russian",
+      "subject": "CN=CryptoPro TLS CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ОГРН=1037700085444, ИНН ЮЛ=7717107991",
+      "issuer": "CN=CryptoPro GOST Root CA, O=\"LLC \"\"Crypto-Pro\"\"\", L=Moscow, S=Moscow, C=RU, ИНН=007717107991, ОГРН=1037700085444",
+      "validFrom": "2021-11-16",
+      "validTo": "2031-11-16"
+    },
+    {
+      "certificateId": "9E78A331020E528C046FFD57704A21B7D2241CB3",
+      "name": "УЦ 1 ИС ГУЦ",
+      "affiliation": "russian",
+      "subject": "CN=УЦ 1 ИС ГУЦ, C=RU, S=77 г. Москва, L=Москва, O=Минкомсвязь России, STREET=125375 г. Москва ул. Тверская д.7, E=dit@minsvyaz.ru, ОГРН=1047702026701, ИНН=007710474375",
+      "issuer": "CN=Головной удостоверяющий центр, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"125375 г. Москва, ул. Тверская, д. 7\", L=Москва, S=77 г. Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2012-07-20",
+      "validTo": "2027-07-17"
+    },
+    {
+      "certificateId": "0932E483C4420E668F64D360006D0BEB0BFACCA7",
+      "name": "УЦ 1 ИС ГУЦ",
+      "affiliation": "russian",
+      "subject": "CN=УЦ 1 ИС ГУЦ, C=RU, S=77 г. Москва, L=Москва, O=Минкомсвязь России, STREET=125375 г. Москва ул. Тверская д.7, E=dit@minsvyaz.ru, ОГРН=1047702026701, ИНН=007710474375",
+      "issuer": "CN=Головной удостоверяющий центр, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"125375 г. Москва, ул. Тверская, д. 7\", L=Москва, S=77 г. Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2016-12-07",
+      "validTo": "2026-12-07"
+    },
+    {
+      "certificateId": "0408435EB90E5C8796A160E69E4BFAC453435D1D",
+      "name": "УЦ 1 ИС ГУЦ",
+      "affiliation": "russian",
+      "subject": "CN=УЦ 1 ИС ГУЦ, C=RU, S=77 г. Москва, L=Москва, O=Минкомсвязь России, STREET=125375 г. Москва ул. Тверская д.7, E=dit@minsvyaz.ru, ОГРН=1047702026701, ИНН=007710474375",
+      "issuer": "CN=Головной удостоверяющий центр, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"125375 г. Москва, ул. Тверская, д. 7\", L=Москва, S=77 г. Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2016-03-16",
+      "validTo": "2027-07-12"
+    },
+    {
+      "certificateId": "8CAE88BBFD404A7A53630864F9033606E1DC45E2",
+      "name": "Головной удостоверяющий центр",
+      "affiliation": "russian",
+      "subject": "CN=Головной удостоверяющий центр, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"125375 г. Москва, ул. Тверская, д. 7\", L=Москва, S=77 г. Москва, C=RU, E=dit@minsvyaz.ru",
+      "issuer": "CN=Головной удостоверяющий центр, ИНН=007710474375, ОГРН=1047702026701, O=Минкомсвязь России, STREET=\"125375 г. Москва, ул. Тверская, д. 7\", L=Москва, S=77 г. Москва, C=RU, E=dit@minsvyaz.ru",
+      "validFrom": "2012-07-20",
+      "validTo": "2027-07-17"
+    }
+  ]
+}

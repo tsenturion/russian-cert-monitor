@@ -74,99 +74,36 @@ internal sealed class CertificateActionController(
             else
                 certificate = PublicCertificateData.FromDer(selected.Metadata.RawData);
 
-            StoreLocation initial = StoreLocation.CurrentUser;
-            if (operation == DisallowedOperation.Add && selected is not null
-                && (selected.Trust?.LocalMachine.IsAccepted == true
-                    || selected.HasDisallowedEntry(StoreLocation.CurrentUser)
-                        && !selected.HasDisallowedEntry(StoreLocation.LocalMachine)))
-                initial = StoreLocation.LocalMachine;
-            if (operation == DisallowedOperation.Remove && selected?.HasDisallowedEntry(StoreLocation.LocalMachine) == true)
-            {
-                DisallowedPreview userEntry = await Task.Run(() =>
-                    manager.Preview(operation, StoreLocation.CurrentUser, certificate), cancellationToken);
-                if (!userEntry.OwnPresent)
-                    initial = StoreLocation.LocalMachine;
-            }
-            StoreLocation? scope = DisallowedDialogs.SelectScope(owner(), certificate, operation, initial, selected?.Trust);
-            if (scope is null)
-                return;
-            actionContext = new(certificate.Metadata.CertificateId, $"{scope}\\Disallowed", operation.ToString());
+            actionContext = new(certificate.Metadata.CertificateId, "LocalMachine\\Disallowed", operation.ToString());
             attempted = true;
-            DisallowedResult? result;
-            if (scope == StoreLocation.LocalMachine)
-            {
-                log.TryWrite("disallowed.elevation-requested", $"Операция: {operation}; LocalMachine; ID: {certificate.Metadata.CertificateId}.",
-                    context: new(certificate.Metadata.CertificateId, "LocalMachine\\Disallowed", operation.ToString()));
-                DisallowedReply reply = await elevated.ExecuteAsync(new DisallowedJob(1, operation, scope.Value,
-                    certificate.Metadata.CertificateId, certificate.Metadata.RawData), cancellationToken);
-                if (reply.Cancelled)
-                {
-                    log.TryWrite("disallowed.cancelled", "Операция отменена в UAC или окне подтверждения.",
-                        context: new(certificate.Metadata.CertificateId, "LocalMachine\\Disallowed", "cancelled"));
-                    return;
-                }
-                if (reply.Error is not null)
-                    throw new InvalidOperationException(reply.Error);
-                result = reply.Result ?? throw new InvalidDataException("Операция не вернула подтверждённый результат.");
-                log.TryWrite("disallowed.completed", $"Операция: {result.Operation}; область: {result.Location}; ID: {result.CertificateId}; " +
-                    $"изменено: {result.Changed}; своё: {result.OwnPresentAfter}; логическое: {result.LogicalPresentAfter}.",
-                    context: new(result.CertificateId, "LocalMachine\\Disallowed",
-                        $"{result.Operation}; changed={result.Changed}; ownPresent={result.OwnPresentAfter}; logicalPresent={result.LogicalPresentAfter}"));
-            }
-            else
-            {
-                DisallowedPreview preview = await Task.Run(() => manager.Preview(operation, scope.Value, certificate), cancellationToken);
-                if (!DisallowedDialogs.Confirm(owner(), preview))
-                {
-                    log.TryWrite("disallowed.cancelled", "Операция отменена перед изменением CurrentUser.",
-                        context: new(certificate.Metadata.CertificateId, "CurrentUser\\Disallowed", "cancelled"));
-                    return;
-                }
-                result = await Task.Run(() => manager.Execute(preview), cancellationToken);
-            }
+            ComputerDisallowedWorkflow workflow = new(manager, elevated.ExecuteAsync, log);
+            ComputerDisallowedChange? change = await workflow.ChangeAsync(operation, certificate, cancellationToken);
+            if (change is null)
+                return;
             string message = operation == DisallowedOperation.Add
-                ? $"Собственная запись в чёрном списке подтверждена: {DisallowedDialogs.ScopeName(result.Location)}."
-                : $"Отсутствие собственной записи подтверждено: {DisallowedDialogs.ScopeName(result.Location)}.";
-            if (operation == DisallowedOperation.Remove && result.LogicalPresentAfter)
-                message += "\r\nСертификат остаётся видимым в логическом Disallowed. Возможны наследование из области компьютера или политика Windows.";
-            if (!result.Changed)
-                message += "\r\nИзменения не потребовались: выбранное состояние уже было установлено.";
-            bool verificationWarning = false;
-            try
-            {
-                WindowsTrustAssessment trust = await Task.Run(() =>
-                {
-                    using WindowsTrustVerifier verifier = new();
-                    return verifier.Verify(certificate.Metadata.RawData);
-                }, cancellationToken);
-                WindowsChainResult selectedTrust = result.Location == StoreLocation.CurrentUser
-                    ? trust.CurrentUser : trust.LocalMachine;
-                bool confirmed = selectedTrust.ErrorStatus.HasValue && (operation == DisallowedOperation.Add
-                    ? selectedTrust.IsExplicitlyDistrusted : !selectedTrust.IsExplicitlyDistrusted);
-                verificationWarning = !confirmed;
-                message += $"\r\n\r\nЦепочка Windows (пользователь): {trust.CurrentUser.Details}" +
-                    $"\r\nЦепочка Windows (компьютер): {trust.LocalMachine.Details}";
-                if (operation == DisallowedOperation.Add && confirmed && result.Location == StoreLocation.CurrentUser
-                    && !trust.LocalMachine.IsExplicitlyDistrusted)
-                    message += "\r\nДля явного запрета в области компьютера выберите «Все пользователи компьютера».";
-                if (verificationWarning)
-                    message += "\r\nПроверка цепочки выбранной области не подтвердила ожидаемый результат. Состояние собственной записи Disallowed указано выше.";
-                log.TryWrite("disallowed.trust-verified",
-                    $"Операция={operation}; область={scope}; ID={result.CertificateId}; подтверждено={confirmed}; " +
-                    $"пользователь={trust.CurrentUser.Details}; компьютер={trust.LocalMachine.Details}.",
-                    context: new(result.CertificateId, $"{scope}\\Disallowed", confirmed ? "confirmed" : "warning"));
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception error)
-            {
-                verificationWarning = true;
-                message += $"\r\n\r\nПовторная проверка доверия Windows не завершилась: {ErrorText.Describe(error)}. Состояние собственной записи Disallowed указано выше.";
-                log.TryWrite("disallowed.trust-verified", "Повторная проверка доверия Windows не завершилась.", error,
-                    new(result.CertificateId, $"{scope}\\Disallowed", "warning"));
-            }
+                ? "Запрет компьютера: собственная запись в LocalMachine\\Disallowed подтверждена."
+                : "Запрет компьютера: отсутствие собственной записи в LocalMachine\\Disallowed подтверждено.";
+            if (!change.Computer.Changed)
+                message += "\r\nСостояние запрета компьютера уже было установлено.";
+            if (change.UserCleanup is { } userCleanup)
+                message += userCleanup.Changed
+                    ? "\r\nПрежняя запись текущего пользователя удалена."
+                    : "\r\nСобственной записи текущего пользователя уже не было.";
+            else if (change.UserCleanupError is not null)
+                message += $"\r\nНе удалось убрать прежнюю запись текущего пользователя: {change.UserCleanupError}";
+            else if (operation == DisallowedOperation.Add
+                && (!change.Trust.CurrentUser.IsExplicitlyDistrusted || !change.Trust.LocalMachine.IsExplicitlyDistrusted))
+                message += "\r\nПрежняя запись текущего пользователя не проверялась: запрет не подтверждён в обеих областях Windows.";
+            else
+                message += "\r\nПрежней собственной записи текущего пользователя нет.";
+            if (operation == DisallowedOperation.Remove && change.Computer.LogicalPresentAfter)
+                message += "\r\nЗапись остаётся видимой в логическом Disallowed компьютера; возможно действие политики Windows.";
+            message += $"\r\n\r\nЦепочка Windows (пользователь): {change.Trust.CurrentUser.Details}" +
+                $"\r\nЦепочка Windows (компьютер): {change.Trust.LocalMachine.Details}";
+            if (!change.IsConfirmed)
+                message += "\r\nОперация подтверждена не полностью. Состояние записей и результаты Windows приведены выше.";
+            message += "\r\nПриложения с собственной политикой доверия могут оценивать сертификат иначе.";
+            bool verificationWarning = !change.IsConfirmed || change.UserCleanupError is not null;
             MessageBox.Show(owner(), message, "RussianCertMonitor", MessageBoxButtons.OK,
                 verificationWarning ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
         }

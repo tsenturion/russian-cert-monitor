@@ -9,6 +9,12 @@ internal static class Program
     {
         try
         {
+            if (args.Contains("--computer-block", StringComparer.Ordinal))
+            {
+                ComputerDisallowedWorkflowChecks.Run();
+                Console.WriteLine("Проверки общего запрета и обработки прежней пользовательской записи пройдены.");
+                return 0;
+            }
             if (args.Contains("--trust", StringComparer.Ordinal))
             {
                 WindowsTrustChecks.Run();

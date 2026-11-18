@@ -98,7 +98,7 @@ internal sealed class MonitorStateStore(string filePath) : IMonitorStateStore
         {
             if (match is null || !IsId(match.CertificateId) || !ids.Add(match.CertificateId)
                 || match.DisplayName is null || match.Category is null || match.Locations is null
-                || !(match.IsRussian || match.IsPossibleRussian || match.WasPreviouslyDeleted))
+                || !(match.IsRussian || match.IsPossibleRussian || match.WasPreviouslyDeleted || match.WasInDisallowed))
                 throw new InvalidDataException("Повреждена запись отслеживания совпадения.");
             ValidateStores(match.Locations);
         }

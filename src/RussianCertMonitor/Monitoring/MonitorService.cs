@@ -150,6 +150,7 @@ internal sealed class MonitorService
         MonitorChangeKind.Disappeared => "Совпадение больше не наблюдается",
         MonitorChangeKind.NoLongerMatches => "Сертификат присутствует, но больше не совпадает с правилами",
         MonitorChangeKind.TrustWeakened => "Явный запрет исчез или цепочка снова проходит проверку",
+        MonitorChangeKind.ComputerBlockRemoved => "Запись Disallowed исчезла из области компьютера",
         _ => throw new ArgumentOutOfRangeException(nameof(kind))
     };
 }

@@ -6,29 +6,6 @@ namespace RussianCertMonitor.UI;
 
 internal static class DisallowedDialogs
 {
-    public static StoreLocation? SelectScope(IWin32Window? owner, PublicCertificateData certificate,
-        DisallowedOperation operation, StoreLocation initial, WindowsTrustAssessment? trust)
-    {
-        using Form dialog = CreateDialog("Область чёрного списка", out TableLayoutPanel layout);
-        ComboBox scope = new() { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Top };
-        scope.Items.AddRange(["Текущий пользователь", "Все пользователи компьютера — требуется UAC"]);
-        scope.SelectedIndex = initial == StoreLocation.LocalMachine ? 1 : 0;
-        layout.Controls.Add(new Label
-        {
-            AutoSize = true, Dock = DockStyle.Fill,
-            Text = (operation == DisallowedOperation.Add ? "Добавить выбранный сертификат в чёрный список:" : "Убрать выбранный сертификат из чёрного списка:")
-                + "\r\nЗапрет пользователя и запрет компьютера различаются. Выберите область вручную."
-                + "\r\nДобавление запрета не блокирует установку сертификата."
-                + $"\r\nПоследняя проверка для пользователя: {trust?.CurrentUser.StatusText ?? "нет результата"}"
-                + $"\r\nПоследняя проверка для компьютера: {trust?.LocalMachine.StatusText ?? "нет результата"}"
-        }, 0, 0);
-        layout.Controls.Add(scope, 0, 1);
-        layout.Controls.Add(Details(certificate), 0, 2);
-        AddButtons(dialog, layout, "Продолжить");
-        return dialog.ShowDialog(owner) == DialogResult.OK
-            ? scope.SelectedIndex == 0 ? StoreLocation.CurrentUser : StoreLocation.LocalMachine : null;
-    }
-
     public static bool Confirm(IWin32Window? owner, DisallowedPreview preview)
     {
         using Form dialog = CreateDialog("RussianCertMonitor — подтверждение изменения", out TableLayoutPanel layout);
@@ -36,23 +13,20 @@ internal static class DisallowedDialogs
         layout.Controls.Add(new Label
         {
             AutoSize = true, Dock = DockStyle.Fill,
-            Text = $"{(add ? "Добавление" : "Удаление")} в чёрном списке: {ScopeName(preview.Location)}.\r\n" +
-                "Изменяется собственная запись Disallowed выбранной области."
+            Text = $"{(add ? "Добавление запрета" : "Снятие запрета")} для всех пользователей компьютера.\r\n" +
+                "Изменяется собственная запись LocalMachine\\Disallowed."
         }, 0, 0);
         layout.Controls.Add(new Label
         {
             AutoSize = true, Dock = DockStyle.Fill,
             Text = $"Собственная запись сейчас: {(preview.OwnPresent ? "имеется" : "отсутствует")}.\r\n" +
-                (add ? "Запрет влияет на оценку доверия Windows в выбранной области. Установка сертификата не блокируется."
-                : "Удаляется только собственная запись выбранной области. Доверие по цепочке Windows проверяется отдельно; унаследованная запись или политика может остаться.")
+                (add ? "Запрет сохраняется после повторного импорта сертификата. После подтверждения результата программа уберёт прежнюю прямую запись текущего пользователя."
+                : "После подтверждения результата программа уберёт прежнюю прямую запись текущего пользователя. Доверие по цепочке Windows проверяется отдельно; политика может сохранить запрет.")
         }, 0, 1);
         layout.Controls.Add(Details(preview.Certificate), 0, 2);
         AddButtons(dialog, layout, add ? "Добавить в чёрный список" : "Удалить запись");
         return dialog.ShowDialog(owner) == DialogResult.OK;
     }
-
-    public static string ScopeName(StoreLocation location) => location == StoreLocation.CurrentUser
-        ? "текущий пользователь" : "все пользователи компьютера";
 
     private static TextBox Details(PublicCertificateData certificate) => new()
     {

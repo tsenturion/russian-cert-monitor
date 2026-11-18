@@ -27,6 +27,7 @@ internal sealed record MonitorNotification(string Title, string Text, bool IsWar
                 MonitorChangeKind.LocationsChanged => "Расположение",
                 MonitorChangeKind.ClassificationChanged => "Принадлежность",
                 MonitorChangeKind.TrustWeakened => "Ослабла защита",
+                MonitorChangeKind.ComputerBlockRemoved => "Снят запрет компьютера",
                 _ => change.Certificate.WasPreviouslyDeleted ? "Ранее удалён" : "Новое"
             };
             string name = change.Certificate.DisplayName.Replace('\r', ' ').Replace('\n', ' ');
@@ -41,7 +42,7 @@ internal sealed record MonitorNotification(string Title, string Text, bool IsWar
         if (text.Length > 240)
             text = text[..237] + "…";
         return new MonitorNotification($"Изменения сертификатов: {relevant.Length}", text,
-            relevant.Any(item => item.Kind == MonitorChangeKind.TrustWeakened
+            relevant.Any(item => item.Kind is MonitorChangeKind.TrustWeakened or MonitorChangeKind.ComputerBlockRemoved
                 || (item.Certificate.IsRussian && (item.Certificate.LastMachineTrustStatus.HasValue
                     ? !item.Certificate.IsMachineDistrusted : !item.Certificate.HasDisallowed))));
     }

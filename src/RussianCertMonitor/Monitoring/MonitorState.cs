@@ -12,7 +12,7 @@ internal sealed record TrackedMatch(
     string CertificateId, string DisplayName, string Category,
     bool IsRussian, bool IsPossibleRussian, bool WasPreviouslyDeleted,
     IReadOnlyList<CertificateStoreDescriptor> Locations,
-    uint? LastUserTrustStatus = null, uint? LastMachineTrustStatus = null)
+    uint? LastUserTrustStatus = null, uint? LastMachineTrustStatus = null, bool WasInDisallowed = false)
 {
     [JsonIgnore]
     public bool IsPresent => Locations.Count > 0;
@@ -20,6 +20,11 @@ internal sealed record TrackedMatch(
     [JsonIgnore]
     public bool HasDisallowed => Locations.Any(location =>
         location.Name.Equals("Disallowed", StringComparison.OrdinalIgnoreCase));
+
+    [JsonIgnore]
+    public bool HasComputerDisallowed => Locations.Any(location =>
+        location.Location == System.Security.Cryptography.X509Certificates.StoreLocation.LocalMachine
+        && location.Name.Equals("Disallowed", StringComparison.OrdinalIgnoreCase));
 
     [JsonIgnore]
     public bool IsMachineDistrusted => LastMachineTrustStatus is uint status
@@ -34,7 +39,8 @@ internal enum MonitorChangeKind
     ClassificationChanged,
     Disappeared,
     NoLongerMatches,
-    TrustWeakened
+    TrustWeakened,
+    ComputerBlockRemoved
 }
 
 internal sealed record MonitorChange(MonitorChangeKind Kind, TrackedMatch Certificate)

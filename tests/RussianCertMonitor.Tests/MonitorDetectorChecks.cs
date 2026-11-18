@@ -75,6 +75,19 @@ internal static class MonitorDetectorChecks
             "Неполный снимок не должен подтверждать снятие Disallowed.");
 
         VerifyTrustChanges(blocked);
+        InventoryCertificate directMachineBlock = Certificate("BLOCKED", locations:
+            [new(StoreLocation.LocalMachine, "Disallowed")]);
+        MonitorComparison blockedOnly = MonitorChangeDetector.Compare(MonitorTrackingState.Empty, Snapshot([directMachineBlock]));
+        Require(blockedOnly.State.Matches.Single().WasInDisallowed,
+            "Монитор должен запоминать запрещённый сертификат независимо от страны.");
+        Require(MonitorChangeDetector.Compare(blockedOnly.State, Snapshot([], complete: false)).Changes.Count == 0,
+            "Неполное чтение не должно сообщать об утрате запрета компьютера.");
+        MonitorComparison removedBlock = MonitorChangeDetector.Compare(blockedOnly.State, Snapshot([]));
+        RequireChange(removedBlock, "BLOCKED", MonitorChangeKind.ComputerBlockRemoved);
+        Require(MonitorNotification.Create(removedBlock.Changes)?.IsWarning == true,
+            "Утрата записи запрета должна предупреждать, даже если после неё сертификат исчез из всех хранилищ.");
+        Require(MonitorChangeDetector.Compare(removedBlock.State, Snapshot([])).Changes.Count == 0,
+            "Исчезновение записи запрета должно предупреждать один раз.");
 
         InventoryCertificate weak = Certificate("WEAK", possible: true, locations: [Root]);
         InventoryCertificate historical = Certificate("HISTORY", historical: true, locations: [Root]);

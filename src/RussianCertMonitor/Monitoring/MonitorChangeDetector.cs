@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using RussianCertMonitor.Certificates;
 using RussianCertMonitor.Inventory;
 
@@ -13,12 +14,17 @@ internal static class MonitorChangeDetector
         List<MonitorChange> changes = [];
 
         foreach (InventoryCertificate certificate in snapshot.Certificates
-            .Where(item => item.NeedsAttention)
             .OrderBy(item => item.Metadata.CertificateId, StringComparer.OrdinalIgnoreCase)
             .ThenBy(item => item.Metadata.CertificateId, StringComparer.Ordinal))
         {
             string id = certificate.Metadata.CertificateId;
             oldMatches.TryGetValue(id, out TrackedMatch? old);
+            bool inDisallowed = certificate.HasDisallowedEntry(StoreLocation.CurrentUser)
+                || certificate.HasDisallowedEntry(StoreLocation.LocalMachine);
+            bool wasInDisallowed = inDisallowed || old?.WasInDisallowed == true;
+            if (!certificate.NeedsAttention && !wasInDisallowed)
+                continue;
+
             CertificateStoreDescriptor[] observed = SortLocations(certificate.Locations);
             CertificateStoreDescriptor[] locations = snapshot.IsComplete || old is null
                 ? observed : SortLocations(old.Locations.Concat(observed));
@@ -29,16 +35,18 @@ internal static class MonitorChangeDetector
                 || (!snapshot.IsComplete && old?.WasPreviouslyDeleted == true);
             string category = isRussian ? "Российский"
                 : isPossibleRussian ? "Косвенные признаки"
-                : "Ранее удалён; принадлежность неизвестна";
+                : wasPreviouslyDeleted ? "Ранее удалён; принадлежность неизвестна" : "Чёрный список";
             uint? userStatus = snapshot.IsComplete ? certificate.Trust?.CurrentUser.ErrorStatus : null;
             uint? machineStatus = snapshot.IsComplete ? certificate.Trust?.LocalMachine.ErrorStatus : null;
             TrackedMatch current = new(id, certificate.Metadata.DisplayName, category,
                 isRussian, isPossibleRussian, wasPreviouslyDeleted, locations,
-                userStatus ?? old?.LastUserTrustStatus, machineStatus ?? old?.LastMachineTrustStatus);
+                userStatus ?? old?.LastUserTrustStatus, machineStatus ?? old?.LastMachineTrustStatus, wasInDisallowed);
             nextMatches[id] = current;
 
             MonitorChangeKind? kind = old is null ? MonitorChangeKind.Found
                 : !old.IsPresent && current.IsPresent ? MonitorChangeKind.Reappeared
+                : snapshot.IsComplete && old.HasComputerDisallowed && !current.HasComputerDisallowed
+                    ? MonitorChangeKind.ComputerBlockRemoved
                 : LostProtection(old.LastUserTrustStatus, userStatus)
                     || LostProtection(old.LastMachineTrustStatus, machineStatus) ? MonitorChangeKind.TrustWeakened
                 : CategoryRank(current) > CategoryRank(old) ? MonitorChangeKind.ClassificationChanged
@@ -64,8 +72,8 @@ internal static class MonitorChangeDetector
                 nextMatches[old.CertificateId] = disappeared;
                 bool stillObserved = snapshot.Certificates.Any(item =>
                     item.Metadata.CertificateId.Equals(old.CertificateId, StringComparison.OrdinalIgnoreCase));
-                changes.Add(new MonitorChange(stillObserved ? MonitorChangeKind.NoLongerMatches
-                    : MonitorChangeKind.Disappeared, disappeared));
+                changes.Add(new MonitorChange(old.HasComputerDisallowed ? MonitorChangeKind.ComputerBlockRemoved
+                    : stillObserved ? MonitorChangeKind.NoLongerMatches : MonitorChangeKind.Disappeared, disappeared));
             }
         }
 

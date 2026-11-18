@@ -89,7 +89,10 @@ internal sealed class MonitorService
                 log?.TryWrite("monitor.match-changed",
                     $"{Describe(change.Kind)}: {change.Certificate.DisplayName}; " +
                     $"идентификатор: {change.Certificate.CertificateId}; категория: {change.Certificate.Category}; " +
-                    $"наблюдаемые хранилища: {string.Join("; ", change.Certificate.Locations.Select(item => item.Path))}.",
+                    $"наблюдаемые хранилища: {string.Join("; ", change.Certificate.Locations.Select(item => item.Path))}." +
+                    (change.Kind == MonitorChangeKind.TrustWeakened
+                        ? $" Доверие Windows: пользователь 0x{change.Certificate.LastUserTrustStatus:X8}, компьютер 0x{change.Certificate.LastMachineTrustStatus:X8}."
+                        : ""),
                     context: new(change.Certificate.CertificateId,
                         string.Join("; ", change.Certificate.Locations.Select(item => item.Path)), change.Kind.ToString()));
             }
@@ -112,6 +115,7 @@ internal sealed class MonitorService
         {
             if (!previous.TryGetValue(current.Metadata.CertificateId, out InventoryCertificate? old)
                 || !MetadataEqual(old.Metadata, current.Metadata) || !LocationsEqual(old.Locations, current.Locations)
+                || old.Trust != current.Trust
                 || old.Classification.IsRussian != current.Classification.IsRussian
                 || old.Classification.IsPossibleRussian != current.Classification.IsPossibleRussian
                 || old.Classification.WasPreviouslyDeleted != current.Classification.WasPreviouslyDeleted
@@ -145,6 +149,7 @@ internal sealed class MonitorService
         MonitorChangeKind.ClassificationChanged => "Усиление признаков принадлежности",
         MonitorChangeKind.Disappeared => "Совпадение больше не наблюдается",
         MonitorChangeKind.NoLongerMatches => "Сертификат присутствует, но больше не совпадает с правилами",
+        MonitorChangeKind.TrustWeakened => "Явный запрет исчез или цепочка снова проходит проверку",
         _ => throw new ArgumentOutOfRangeException(nameof(kind))
     };
 }

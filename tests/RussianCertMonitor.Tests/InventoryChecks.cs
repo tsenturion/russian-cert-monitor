@@ -82,19 +82,21 @@ internal static class InventoryChecks
         }
     }
 
-    public static void WriteLiveSnapshot()
+    public static void WriteLiveSnapshot(bool checkTrust)
     {
-        CertificateInventorySnapshot snapshot = Service(new WindowsCertificateStoreProvider()).Scan();
+        CertificateInventorySnapshot snapshot = new CertificateInventoryService(new WindowsCertificateStoreProvider(),
+            new RussianCertificateClassifier(CertificateCatalog.Load()), verifyWindowsTrust: checkTrust).Scan();
         Console.WriteLine(JsonSerializer.Serialize(new
         {
             snapshot.ScannedAt, snapshot.IsComplete, snapshot.ObservationCount,
             UniqueCount = snapshot.Certificates.Count, snapshot.RussianCount, snapshot.PossibleCount,
             snapshot.HistoricalUnknownCount, Stores = snapshot.Stores.Select(item => item.Path), snapshot.Issues,
+            snapshot.TrustComplete, snapshot.RussianAcceptedByComputerCount, snapshot.UserOnlyDistrustedCount,
             Certificates = snapshot.Certificates.Select(item => new
             {
-                item.Metadata.CertificateId, Locations = item.Locations.Select(location => location.Path),
+                item.Metadata.CertificateId, item.Metadata.DisplayName, Locations = item.Locations.Select(location => location.Path),
                 item.Category, item.DisallowedStatus, Reasons = item.Classification.Reasons,
-                Errors = item.ReadErrors.Concat(item.Classification.Errors)
+                Errors = item.ReadErrors.Concat(item.Classification.Errors), item.Trust
             })
         }, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
     }

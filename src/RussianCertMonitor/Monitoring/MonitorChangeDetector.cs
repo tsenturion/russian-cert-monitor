@@ -1,3 +1,4 @@
+using RussianCertMonitor.Certificates;
 using RussianCertMonitor.Inventory;
 
 namespace RussianCertMonitor.Monitoring;
@@ -29,15 +30,22 @@ internal static class MonitorChangeDetector
             string category = isRussian ? "Российский"
                 : isPossibleRussian ? "Косвенные признаки"
                 : "Ранее удалён; принадлежность неизвестна";
+            uint? userStatus = snapshot.IsComplete ? certificate.Trust?.CurrentUser.ErrorStatus : null;
+            uint? machineStatus = snapshot.IsComplete ? certificate.Trust?.LocalMachine.ErrorStatus : null;
             TrackedMatch current = new(id, certificate.Metadata.DisplayName, category,
-                isRussian, isPossibleRussian, wasPreviouslyDeleted, locations);
+                isRussian, isPossibleRussian, wasPreviouslyDeleted, locations,
+                userStatus ?? old?.LastUserTrustStatus, machineStatus ?? old?.LastMachineTrustStatus);
             nextMatches[id] = current;
 
             MonitorChangeKind? kind = old is null ? MonitorChangeKind.Found
                 : !old.IsPresent && current.IsPresent ? MonitorChangeKind.Reappeared
+                : LostProtection(old.LastUserTrustStatus, userStatus)
+                    || LostProtection(old.LastMachineTrustStatus, machineStatus) ? MonitorChangeKind.TrustWeakened
                 : CategoryRank(current) > CategoryRank(old) ? MonitorChangeKind.ClassificationChanged
                 : HasNewLocation(old.Locations, locations)
-                    || (snapshot.IsComplete && old.HasDisallowed && !current.HasDisallowed && current.IsPresent)
+                    || (snapshot.IsComplete && old.Locations.Any(location =>
+                        location.Name.Equals("Disallowed", StringComparison.OrdinalIgnoreCase)
+                        && !locations.Any(item => SameLocation(item, location))))
                     ? MonitorChangeKind.LocationsChanged : null;
             if (kind is not null)
                 changes.Add(new MonitorChange(kind.Value, current));
@@ -72,6 +80,14 @@ internal static class MonitorChangeDetector
 
     private static int CategoryRank(TrackedMatch match) => match.IsRussian ? 3
         : match.IsPossibleRussian ? 2 : match.WasPreviouslyDeleted ? 1 : 0;
+
+    private static bool LostProtection(uint? previous, uint? current)
+    {
+        if (!previous.HasValue || !current.HasValue || previous == current)
+            return false;
+        return current == 0 || (new WindowsChainResult(previous).IsExplicitlyDistrusted
+            && !new WindowsChainResult(current).IsExplicitlyDistrusted);
+    }
 
     private static bool HasNewLocation(IReadOnlyList<CertificateStoreDescriptor> oldLocations,
         IReadOnlyList<CertificateStoreDescriptor> newLocations) =>

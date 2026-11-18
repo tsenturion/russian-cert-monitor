@@ -42,7 +42,7 @@ internal static class Stage5DataChecks
             InventoryCertificate certificate = new(metadata,
                 [new CertificateStoreDescriptor(StoreLocation.CurrentUser, "Root")],
                 new CertificateClassification(true, false, false, ["Признак"], ["Ошибка классификации"], true),
-                ["Ошибка чтения"]);
+                ["Ошибка чтения"], new(new(0x04000000), new(0)));
             CertificateInventorySnapshot snapshot = new(today.AddDays(-1), [certificate],
                 [new CertificateStoreDescriptor(StoreLocation.CurrentUser, "Root")],
                 [new InventoryIssue("CurrentUser\\Root", "Нет доступа")], 1);
@@ -67,6 +67,12 @@ internal static class Stage5DataChecks
                 && text.Contains("Firefox и Java не проверялись")
                 && jsonText.Contains("ScopeNotes"),
                 "Отчёт должен пояснять давность и границы проверки.");
+            JsonElement trust = report.RootElement.GetProperty("Inventory").GetProperty("Certificates")[0].GetProperty("WindowsTrust");
+            Require(trust.GetProperty("CurrentUser").GetProperty("IsExplicitlyDistrusted").GetBoolean()
+                && trust.GetProperty("LocalMachine").GetProperty("IsAccepted").GetBoolean()
+                && text.Contains("Цепочка пользователя: Явный запрет")
+                && text.Contains("Цепочка компьютера: Цепочка без ошибок"),
+                "Отчёты должны показывать разные результаты проверки доверия для пользователя и компьютера.");
             Require(!jsonText.Contains("RawData") && !jsonText.Contains("SubjectNameRaw")
                 && !jsonText.Contains("IssuerNameRaw"), "Бинарные поля не должны попадать в отчёт.");
             object recursiveSettings = new RecursiveSettings();

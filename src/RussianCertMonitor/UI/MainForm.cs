@@ -1,9 +1,9 @@
 using RussianCertMonitor.Catalog;
 using RussianCertMonitor.Inventory;
-using RussianCertMonitor.Monitoring;
 using System.Security.Cryptography.X509Certificates;
 using RussianCertMonitor.Infrastructure;
 using RussianCertMonitor.Settings;
+using RussianCertMonitor.Monitoring;
 
 namespace RussianCertMonitor.UI;
 
@@ -103,6 +103,7 @@ internal sealed class MainForm : Form
         scopeFilter.Items.AddRange(["Оба расположения", "Пользователь", "Компьютер"]);
         categoryFilter.SelectedIndex = 0;
         scopeFilter.SelectedIndex = 0;
+        categoryFilter.Items.AddRange(["Российские цепочки ПК без ошибок", "Явный запрет только у пользователя"]);
         filters.Controls.Add(categoryFilter);
         filters.Controls.Add(scopeFilter);
         layout.Controls.Add(filters, 0, 1);
@@ -189,15 +190,19 @@ internal sealed class MainForm : Form
             _ = historyPanel?.RefreshAsync();
     }
 
-    public void ShowSnapshot(CertificateInventorySnapshot snapshot)
+    public void ShowSnapshot(CertificateInventorySnapshot snapshot, bool restored = false)
     {
-        string completeness = snapshot.IsComplete ? "Проверка завершена" : "Проверка неполная";
+        bool unchanged = MonitorService.SnapshotContentsEqual(renderedSnapshot, snapshot);
+        string completeness = restored ? "Сохранённый снимок. Ожидается проверка"
+            : snapshot.TrustComplete ? "Проверка завершена" : "Проверка неполная";
+        string trustedRussian = snapshot.TrustComplete ? snapshot.RussianAcceptedByComputerCount.ToString()
+            : $"подтверждено {snapshot.RussianAcceptedByComputerCount}, охват неполный";
         summary.Text = $"{completeness} · {snapshot.ScannedAt.ToLocalTime():dd.MM.yyyy HH:mm:ss}\r\n" +
             $"Уникальных: {snapshot.Certificates.Count} · Наблюдений: {snapshot.ObservationCount} · " +
             $"Хранилищ прочитано: {snapshot.Stores.Count} · Российских: {snapshot.RussianCount} · " +
-            $"Косвенные признаки: {snapshot.PossibleCount} · Из истории без принадлежности: {snapshot.HistoricalUnknownCount}";
-        summary.ForeColor = snapshot.IsComplete ? SystemColors.ControlText : Color.DarkRed;
-        bool unchanged = MonitorService.SnapshotContentsEqual(renderedSnapshot, snapshot);
+            $"Косвенные признаки: {snapshot.PossibleCount} · Из истории без принадлежности: {snapshot.HistoricalUnknownCount}\r\n" +
+            $"Российских цепочек ПК без ошибок: {trustedRussian} · Явный запрет только у пользователя: {snapshot.UserOnlyDistrustedCount}";
+        summary.ForeColor = snapshot.TrustComplete && !restored ? SystemColors.ControlText : Color.DarkRed;
         errorsPage.Text = $"Ошибки чтения ({snapshot.Issues.Count})";
         errors.Text = snapshot.IsComplete
             ? "Ошибок чтения не зарегистрировано.\r\nПрочитанные логические хранилища:\r\n" +
@@ -209,7 +214,9 @@ internal sealed class MainForm : Form
             foreach (ListView list in new[] { matches, allCertificates, blacklisted })
                 foreach (ListViewItem row in list.Items)
                     if (row.Tag is InventoryCertificate certificate)
+                    {
                         row.SubItems[2].Text = certificate.ValidityStatus(snapshot.ScannedAt);
+                    }
             SetScanning(false);
             return;
         }
@@ -240,6 +247,8 @@ internal sealed class MainForm : Form
             2 => !certificate.Classification.IsRussian && certificate.Classification.IsPossibleRussian,
             3 => certificate.Classification.WasPreviouslyDeleted,
             4 => certificate.Classification.IsExcluded,
+            5 => certificate.Classification.IsRussian && certificate.Trust?.LocalMachine.IsAccepted == true,
+            6 => certificate.IsDistrustedOnlyByUser,
             _ => true
         };
         if (!categoryMatches)
@@ -262,7 +271,9 @@ internal sealed class MainForm : Form
     private static bool IsDisallowed(CertificateStoreDescriptor location) =>
         location.Name.Equals("Disallowed", StringComparison.OrdinalIgnoreCase);
 
-    private static bool HasDisallowed(InventoryCertificate certificate) => certificate.Locations.Any(IsDisallowed);
+    private static bool HasDisallowed(InventoryCertificate certificate) =>
+        certificate.HasDisallowedEntry(StoreLocation.CurrentUser)
+        || certificate.HasDisallowedEntry(StoreLocation.LocalMachine);
 
     private ListView? CurrentList => tabs.SelectedTab == matchesPage ? matches
         : tabs.SelectedTab == allPage ? allCertificates
@@ -305,6 +316,9 @@ internal sealed class MainForm : Form
             $"{certificate.DisallowedStatus}\r\nНаблюдается в логических хранилищах: " +
             string.Join("; ", certificate.Locations.Select(item => item.Path)) + "\r\n" +
             "Расположение в CurrentUser может быть унаследовано из LocalMachine.\r\n" +
+            $"Цепочка Windows (пользователь): {certificate.Trust?.CurrentUser.Details ?? "не проверена"}\r\n" +
+            $"Цепочка Windows (компьютер): {certificate.Trust?.LocalMachine.Details ?? "не проверена"}\r\n" +
+            "Базовая проверка без проверки назначения, отзыва и загрузки из сети.\r\n" +
             $"Причины:\r\n{reasons}" + (readErrors.Length == 0 ? "" : $"\r\nОшибки чтения:\r\n{readErrors}");
     }
 
@@ -377,6 +391,8 @@ internal sealed class MainForm : Form
         list.Columns.Add("Название", 290);
         list.Columns.Add("Категория", 210);
         list.Columns.Add("Срок", 130);
+        list.Columns.Add("Доверие пользователя", 240);
+        list.Columns.Add("Доверие компьютера", 240);
         list.Columns.Add("Хранилища", 240);
         list.Columns.Add("Disallowed", 270);
         list.Columns.Add("Идентификатор Windows", 360);
@@ -396,6 +412,8 @@ internal sealed class MainForm : Form
                 ListViewItem row = new(certificate.Metadata.DisplayName) { Tag = certificate };
                 row.SubItems.Add(certificate.Category);
                 row.SubItems.Add(certificate.ValidityStatus(scannedAt));
+                row.SubItems.Add(certificate.Trust?.CurrentUser.StatusText ?? "Не проверено");
+                row.SubItems.Add(certificate.Trust?.LocalMachine.StatusText ?? "Не проверено");
                 row.SubItems.Add(string.Join("; ", certificate.Locations.Select(item => item.Path)));
                 row.SubItems.Add(certificate.DisallowedStatus);
                 row.SubItems.Add(certificate.Metadata.CertificateId);

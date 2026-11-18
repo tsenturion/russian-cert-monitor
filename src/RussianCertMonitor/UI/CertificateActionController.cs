@@ -74,10 +74,20 @@ internal sealed class CertificateActionController(
             else
                 certificate = PublicCertificateData.FromDer(selected.Metadata.RawData);
 
-            StoreLocation initial = selected is not null && operation == DisallowedOperation.Remove
-                && !selected.Locations.Any(item => item.Location == StoreLocation.CurrentUser && item.Name.Equals("Disallowed", StringComparison.OrdinalIgnoreCase))
-                ? StoreLocation.LocalMachine : StoreLocation.CurrentUser;
-            StoreLocation? scope = DisallowedDialogs.SelectScope(owner(), certificate, operation, initial);
+            StoreLocation initial = StoreLocation.CurrentUser;
+            if (operation == DisallowedOperation.Add && selected is not null
+                && (selected.Trust?.LocalMachine.IsAccepted == true
+                    || selected.HasDisallowedEntry(StoreLocation.CurrentUser)
+                        && !selected.HasDisallowedEntry(StoreLocation.LocalMachine)))
+                initial = StoreLocation.LocalMachine;
+            if (operation == DisallowedOperation.Remove && selected?.HasDisallowedEntry(StoreLocation.LocalMachine) == true)
+            {
+                DisallowedPreview userEntry = await Task.Run(() =>
+                    manager.Preview(operation, StoreLocation.CurrentUser, certificate), cancellationToken);
+                if (!userEntry.OwnPresent)
+                    initial = StoreLocation.LocalMachine;
+            }
+            StoreLocation? scope = DisallowedDialogs.SelectScope(owner(), certificate, operation, initial, selected?.Trust);
             if (scope is null)
                 return;
             actionContext = new(certificate.Metadata.CertificateId, $"{scope}\\Disallowed", operation.ToString());
@@ -121,7 +131,44 @@ internal sealed class CertificateActionController(
                 message += "\r\nСертификат остаётся видимым в логическом Disallowed. Возможны наследование из области компьютера или политика Windows.";
             if (!result.Changed)
                 message += "\r\nИзменения не потребовались: выбранное состояние уже было установлено.";
-            MessageBox.Show(owner(), message, "RussianCertMonitor", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            bool verificationWarning = false;
+            try
+            {
+                WindowsTrustAssessment trust = await Task.Run(() =>
+                {
+                    using WindowsTrustVerifier verifier = new();
+                    return verifier.Verify(certificate.Metadata.RawData);
+                }, cancellationToken);
+                WindowsChainResult selectedTrust = result.Location == StoreLocation.CurrentUser
+                    ? trust.CurrentUser : trust.LocalMachine;
+                bool confirmed = selectedTrust.ErrorStatus.HasValue && (operation == DisallowedOperation.Add
+                    ? selectedTrust.IsExplicitlyDistrusted : !selectedTrust.IsExplicitlyDistrusted);
+                verificationWarning = !confirmed;
+                message += $"\r\n\r\nЦепочка Windows (пользователь): {trust.CurrentUser.Details}" +
+                    $"\r\nЦепочка Windows (компьютер): {trust.LocalMachine.Details}";
+                if (operation == DisallowedOperation.Add && confirmed && result.Location == StoreLocation.CurrentUser
+                    && !trust.LocalMachine.IsExplicitlyDistrusted)
+                    message += "\r\nДля явного запрета в области компьютера выберите «Все пользователи компьютера».";
+                if (verificationWarning)
+                    message += "\r\nПроверка цепочки выбранной области не подтвердила ожидаемый результат. Состояние собственной записи Disallowed указано выше.";
+                log.TryWrite("disallowed.trust-verified",
+                    $"Операция={operation}; область={scope}; ID={result.CertificateId}; подтверждено={confirmed}; " +
+                    $"пользователь={trust.CurrentUser.Details}; компьютер={trust.LocalMachine.Details}.",
+                    context: new(result.CertificateId, $"{scope}\\Disallowed", confirmed ? "confirmed" : "warning"));
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception error)
+            {
+                verificationWarning = true;
+                message += $"\r\n\r\nПовторная проверка доверия Windows не завершилась: {ErrorText.Describe(error)}. Состояние собственной записи Disallowed указано выше.";
+                log.TryWrite("disallowed.trust-verified", "Повторная проверка доверия Windows не завершилась.", error,
+                    new(result.CertificateId, $"{scope}\\Disallowed", "warning"));
+            }
+            MessageBox.Show(owner(), message, "RussianCertMonitor", MessageBoxButtons.OK,
+                verificationWarning ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -143,4 +190,5 @@ internal sealed class CertificateActionController(
             MessageBox.Show(owner(), message + "\r\n\r\n" + ErrorText.Describe(error), "RussianCertMonitor",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
+
 }

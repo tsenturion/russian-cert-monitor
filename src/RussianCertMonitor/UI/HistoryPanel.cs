@@ -130,6 +130,7 @@ internal sealed class HistoryPanel : UserControl
         "monitor.coverage-changed" => "Полнота проверки",
         "disallowed.requested" => "Запрошено изменение Disallowed",
         "disallowed.completed" => "Результат Disallowed подтверждён",
+        "disallowed.trust-verified" => "Проверка цепочки после изменения Disallowed",
         "disallowed.elevation-requested" => "Запрошены права администратора",
         "disallowed.cancelled" => "Операция отменена",
         "disallowed.error" => "Ошибка изменения Disallowed",

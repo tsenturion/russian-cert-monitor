@@ -1,4 +1,5 @@
 using System.Security.Cryptography.X509Certificates;
+using RussianCertMonitor.Certificates;
 using RussianCertMonitor.Classification;
 
 namespace RussianCertMonitor.Inventory;
@@ -23,7 +24,8 @@ internal sealed record CertificateStoreReadResult(
 
 internal sealed record InventoryCertificate(
     CertificateMetadata Metadata, IReadOnlyList<CertificateStoreDescriptor> Locations,
-    CertificateClassification Classification, IReadOnlyList<string> ReadErrors)
+    CertificateClassification Classification, IReadOnlyList<string> ReadErrors,
+    WindowsTrustAssessment? Trust = null)
 {
     public bool NeedsAttention => Classification.IsRussian || Classification.IsPossibleRussian
         || Classification.WasPreviouslyDeleted;
@@ -37,10 +39,8 @@ internal sealed record InventoryCertificate(
     {
         get
         {
-            bool user = Locations.Any(item => item.Location == StoreLocation.CurrentUser
-                && item.Name.Equals("Disallowed", StringComparison.OrdinalIgnoreCase));
-            bool machine = Locations.Any(item => item.Location == StoreLocation.LocalMachine
-                && item.Name.Equals("Disallowed", StringComparison.OrdinalIgnoreCase));
+            bool user = HasDisallowedEntry(StoreLocation.CurrentUser);
+            bool machine = HasDisallowedEntry(StoreLocation.LocalMachine);
             return (user, machine) switch
             {
                 (true, true) => "Disallowed: пользователь и компьютер",
@@ -50,6 +50,15 @@ internal sealed record InventoryCertificate(
             };
         }
     }
+
+    public bool HasDisallowedEntry(StoreLocation scope) => Locations.Any(item => item.Location == scope
+        && item.Name.Equals("Disallowed", StringComparison.OrdinalIgnoreCase));
+
+    public bool IsDistrustedOnlyByUser => Trust is
+    {
+        CurrentUser.IsExplicitlyDistrusted: true, LocalMachine.ErrorStatus: not null,
+        LocalMachine.IsExplicitlyDistrusted: false
+    };
 
     public string ValidityStatus(DateTimeOffset now) => Metadata.NotBefore is null || Metadata.NotAfter is null
         ? "Срок не прочитан"
@@ -69,6 +78,11 @@ internal sealed record CertificateInventorySnapshot(
         && item.Classification.IsPossibleRussian);
     public int HistoricalUnknownCount => Certificates.Count(item => item.Classification.WasPreviouslyDeleted
         && !item.Classification.IsRussian && !item.Classification.IsPossibleRussian);
+    public bool TrustComplete => IsComplete && Certificates.All(item =>
+        item.Trust is { CurrentUser.ErrorStatus: not null, LocalMachine.ErrorStatus: not null });
+    public int RussianAcceptedByComputerCount => Certificates.Count(item =>
+        item.Classification.IsRussian && item.Trust?.LocalMachine.IsAccepted == true);
+    public int UserOnlyDistrustedCount => Certificates.Count(item => item.IsDistrustedOnlyByUser);
 }
 
 internal interface ICertificateStoreProvider

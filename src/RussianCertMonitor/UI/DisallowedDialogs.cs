@@ -7,7 +7,7 @@ namespace RussianCertMonitor.UI;
 internal static class DisallowedDialogs
 {
     public static StoreLocation? SelectScope(IWin32Window? owner, PublicCertificateData certificate,
-        DisallowedOperation operation, StoreLocation initial)
+        DisallowedOperation operation, StoreLocation initial, WindowsTrustAssessment? trust)
     {
         using Form dialog = CreateDialog("Область чёрного списка", out TableLayoutPanel layout);
         ComboBox scope = new() { DropDownStyle = ComboBoxStyle.DropDownList, Dock = DockStyle.Top };
@@ -16,7 +16,11 @@ internal static class DisallowedDialogs
         layout.Controls.Add(new Label
         {
             AutoSize = true, Dock = DockStyle.Fill,
-            Text = operation == DisallowedOperation.Add ? "Добавить выбранный сертификат в чёрный список:" : "Убрать выбранный сертификат из чёрного списка:"
+            Text = (operation == DisallowedOperation.Add ? "Добавить выбранный сертификат в чёрный список:" : "Убрать выбранный сертификат из чёрного списка:")
+                + "\r\nЗапрет пользователя и запрет компьютера различаются. Выберите область вручную."
+                + "\r\nДобавление запрета не блокирует установку сертификата."
+                + $"\r\nПоследняя проверка для пользователя: {trust?.CurrentUser.StatusText ?? "нет результата"}"
+                + $"\r\nПоследняя проверка для компьютера: {trust?.LocalMachine.StatusText ?? "нет результата"}"
         }, 0, 0);
         layout.Controls.Add(scope, 0, 1);
         layout.Controls.Add(Details(certificate), 0, 2);
@@ -39,8 +43,8 @@ internal static class DisallowedDialogs
         {
             AutoSize = true, Dock = DockStyle.Fill,
             Text = $"Собственная запись сейчас: {(preview.OwnPresent ? "имеется" : "отсутствует")}.\r\n" +
-                (add ? "Сертификат будет запрещён в выбранной области для программ, использующих доверие Windows."
-                : "Удаление запрета позволяет снова оценивать доверие сертификату. Унаследованная запись или политика может остаться.")
+                (add ? "Запрет влияет на оценку доверия Windows в выбранной области. Установка сертификата не блокируется."
+                : "Удаляется только собственная запись выбранной области. Доверие по цепочке Windows проверяется отдельно; унаследованная запись или политика может остаться.")
         }, 0, 1);
         layout.Controls.Add(Details(preview.Certificate), 0, 2);
         AddButtons(dialog, layout, add ? "Добавить в чёрный список" : "Удалить запись");
@@ -66,6 +70,7 @@ internal static class DisallowedDialogs
         {
             Text = title, StartPosition = FormStartPosition.CenterScreen, Size = new Size(940, 650),
             MinimumSize = new Size(800, 550), Font = new Font("Segoe UI", 10),
+            AutoScaleMode = AutoScaleMode.Dpi,
             MinimizeBox = false, MaximizeBox = false, ShowInTaskbar = false
         };
         layout = new TableLayoutPanel

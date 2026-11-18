@@ -1,4 +1,5 @@
 using System.Security.Cryptography.X509Certificates;
+using RussianCertMonitor.Certificates;
 using RussianCertMonitor.Classification;
 using RussianCertMonitor.Inventory;
 using RussianCertMonitor.Monitoring;
@@ -73,6 +74,8 @@ internal static class MonitorDetectorChecks
             Snapshot([russian], complete: false)).Changes.Count == 0,
             "Неполный снимок не должен подтверждать снятие Disallowed.");
 
+        VerifyTrustChanges(blocked);
+
         InventoryCertificate weak = Certificate("WEAK", possible: true, locations: [Root]);
         InventoryCertificate historical = Certificate("HISTORY", historical: true, locations: [Root]);
         InventoryCertificate other = Certificate("OTHER", locations: [Root]);
@@ -108,6 +111,27 @@ internal static class MonitorDetectorChecks
         Require(sourceLocations.SequenceEqual([MachineRoot, Root])
             && ReferenceEquals(sourceMatches[0], found.State.Matches[0]),
             "Сравнение не должно изменять входные коллекции.");
+    }
+
+    private static void VerifyTrustChanges(InventoryCertificate blocked)
+    {
+        WindowsChainResult denied = new(0x04000000);
+        WindowsChainResult allowed = new(0);
+        InventoryCertificate bothDenied = blocked with { Trust = new(denied, denied) };
+        InventoryCertificate userOnly = blocked with { Trust = new(denied, allowed) };
+        MonitorComparison baseline = MonitorChangeDetector.Compare(MonitorTrackingState.Empty, Snapshot([bothDenied]));
+        InventoryCertificate unavailable = blocked with { Trust = new(denied, new(null, "Недоступно")) };
+        MonitorComparison interrupted = MonitorChangeDetector.Compare(baseline.State, Snapshot([unavailable]));
+        Require(interrupted.Changes.Count == 0 && interrupted.State.Matches[0].IsMachineDistrusted,
+            "Ошибка проверки не подтверждает снятие запрета и не стирает предыдущий результат.");
+        Require(MonitorChangeDetector.Compare(interrupted.State, Snapshot([userOnly], complete: false)).Changes.Count == 0,
+            "Неполный снимок не подтверждает изменение доверия.");
+        MonitorComparison weakened = MonitorChangeDetector.Compare(interrupted.State, Snapshot([userOnly]));
+        RequireChange(weakened, blocked.Metadata.CertificateId, MonitorChangeKind.TrustWeakened);
+        Require(MonitorNotification.Create(weakened.Changes)?.IsWarning == true,
+            "Сохранившийся пользовательский запрет не должен скрыть потерю запрета для компьютера.");
+        Require(MonitorChangeDetector.Compare(weakened.State, Snapshot([userOnly])).Changes.Count == 0,
+            "Неизменное состояние доверия не должно повторять предупреждение.");
     }
 
     private static InventoryCertificate Certificate(string id, bool russian = false,

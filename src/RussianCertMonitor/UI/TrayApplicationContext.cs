@@ -70,7 +70,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             }
         }
         monitor = new MonitorService(token => new CertificateInventoryService(new WindowsCertificateStoreProvider(),
-            new RussianCertificateClassifier(catalog, settings), log).Scan(token),
+            new RussianCertificateClassifier(catalog, settings), log, verifyWindowsTrust: true).Scan(token),
             new MonitorStateStore(AppPaths.MonitorStateFile), log);
         snapshot = monitor.RestoredSnapshot;
         snapshotRestored = snapshot is not null;
@@ -151,7 +151,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 new ApplicationUiActions(() => _ = ShowSettingsAsync(), () => _ = ExportReportAsync(), ReadHistoryAsync));
             window.FormClosed += (_, _) => window = null;
             if (snapshot is not null)
-                window.ShowSnapshot(snapshot);
+                window.ShowSnapshot(snapshot, snapshotRestored);
             if (scanFailure is not null)
                 window.ShowScanFailure(scanFailure);
             window.ShowMonitorSettings(settings);
@@ -198,9 +198,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
             UpdateWarnings();
             notifyIcon.Text = persistenceWarning is not null
                 ? "RussianCertMonitor — ошибка сохранения состояния"
-                : result.IsComplete
-                ? $"RussianCertMonitor — совпадений: {result.Certificates.Count(item => item.NeedsAttention)}"
-                : "RussianCertMonitor — проверка неполная";
+                : !result.IsComplete ? "RussianCertMonitor — хранилища прочитаны не полностью"
+                : !result.TrustComplete ? "RussianCertMonitor — проверка доверия неполная"
+                : $"RussianCertMonitor — компьютер принимает: {result.RussianAcceptedByComputerCount}";
             ShowNotification(cycle.Changes);
             RefreshHistory();
         }

@@ -1,5 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
 using RussianCertMonitor.Catalog;
+using RussianCertMonitor.Certificates;
 using RussianCertMonitor.Classification;
 using RussianCertMonitor.Inventory;
 using RussianCertMonitor.UI;
@@ -15,11 +16,14 @@ internal static class MainFormChecks
 
     public static void Run()
     {
-        InventoryCertificate russian = Certificate("rus", "Российский тест", true, false, true, [UserRoot], [1]);
+        WindowsChainResult accepted = new(0);
+        WindowsChainResult denied = new(0x04000000);
+        InventoryCertificate russian = Certificate("rus", "Российский тест", true, false, true, [UserRoot], [1])
+            with { Trust = new(denied, accepted) };
         InventoryCertificate possible = Certificate("possible", "Косвенный тест", false, true, false, [MachineRoot], [2]);
         InventoryCertificate historical = Certificate("old", "История", false, false, true, [UserRoot], []);
         InventoryCertificate foreign = Certificate("foreign", "Иностранный блок", false, false, false,
-            [MachineRoot, UserBlocked], [3]);
+            [MachineRoot, UserBlocked], [3]) with { Trust = new(accepted, accepted) };
         InventoryCertificate machineBlocked = Certificate("machine", "Блок компьютера", false, false, false,
             [UserRoot, MachineBlocked], [4]);
         InventoryCertificate? callback = null;
@@ -70,6 +74,15 @@ internal static class MainFormChecks
             category.SelectedIndex = 3;
             Require(matches.Items.Count == 2 && all.Items.Count == 2,
                 "Фильтр истории должен включать и подтверждённые российские записи.");
+            category.SelectedItem = "Российские цепочки ПК без ошибок";
+            Require(all.Items.Count == 1 && ReferenceEquals(all.Items[0].Tag, russian)
+                && all.Items[0].SubItems[3].Text == denied.StatusText
+                && all.Items[0].SubItems[4].Text == accepted.StatusText,
+                "Таблица должна показывать независимые результаты проверки цепочки в обеих областях.");
+            category.SelectedItem = "Явный запрет только у пользователя";
+            Require(all.Items.Count == 1 && ReferenceEquals(all.Items[0].Tag, russian) && blocked.Items.Count == 0,
+                "Фильтр запрета должен учитывать результат цепочки, а не присутствие записи в Disallowed.");
+            category.SelectedIndex = 3;
             tabs.SelectedTab = tabs.TabPages.Cast<TabPage>().Single(page => page.Text.StartsWith("Все сертификаты"));
             all.Items.Cast<ListViewItem>().Single(item => ((InventoryCertificate)item.Tag!).Metadata.CertificateId == "old").Selected = true;
             Require(!properties.Enabled && !export.Enabled && !add.Enabled && !remove.Enabled,

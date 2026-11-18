@@ -9,6 +9,26 @@ internal static class Program
     {
         try
         {
+            if (args.Contains("--trust", StringComparer.Ordinal))
+            {
+                WindowsTrustChecks.Run();
+                Console.WriteLine("Встроенная проверка доверия Windows пройдена.");
+                return 0;
+            }
+            if (args.Contains("--live-trust-user", StringComparer.Ordinal)
+                || args.Contains("--live-trust-machine", StringComparer.Ordinal))
+            {
+                bool machine = args.Contains("--live-trust-machine", StringComparer.Ordinal);
+                using System.Security.Principal.WindowsIdentity identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                if (machine && !new System.Security.Principal.WindowsPrincipal(identity)
+                    .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
+                    throw new InvalidOperationException("Проверка доверия LocalMachine требует запуска от администратора.");
+                var scope = machine ? System.Security.Cryptography.X509Certificates.StoreLocation.LocalMachine
+                    : System.Security.Cryptography.X509Certificates.StoreLocation.CurrentUser;
+                WindowsTrustChecks.RunLive(scope);
+                Console.WriteLine($"Windows подтвердила явный запрет в {scope}, его область и снятие.");
+                return 0;
+            }
             if (args.Contains("--logging", StringComparer.Ordinal))
             {
                 LoggingChecks.Run();
@@ -98,9 +118,9 @@ internal static class Program
                 Console.WriteLine("Проверки мониторинга, сохранения состояния и уведомлений третьего этапа пройдены.");
                 return 0;
             }
-            if (args.Contains("--inventory", StringComparer.Ordinal))
+            if (args.Contains("--inventory", StringComparer.Ordinal) || args.Contains("--trust-inventory", StringComparer.Ordinal))
             {
-                InventoryChecks.WriteLiveSnapshot();
+                InventoryChecks.WriteLiveSnapshot(args.Contains("--trust-inventory", StringComparer.Ordinal));
                 return 0;
             }
             if (args.Contains("--stage2", StringComparer.Ordinal))

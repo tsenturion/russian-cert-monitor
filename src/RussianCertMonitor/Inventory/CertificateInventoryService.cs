@@ -2,13 +2,15 @@ using System.ComponentModel;
 using System.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using RussianCertMonitor.Certificates;
 using RussianCertMonitor.Classification;
 using RussianCertMonitor.Infrastructure;
 
 namespace RussianCertMonitor.Inventory;
 
 internal sealed class CertificateInventoryService(
-    ICertificateStoreProvider provider, RussianCertificateClassifier classifier, DiagnosticLog? log = null)
+    ICertificateStoreProvider provider, RussianCertificateClassifier classifier, DiagnosticLog? log = null,
+    bool verifyWindowsTrust = false)
 {
     public CertificateInventorySnapshot Scan(CancellationToken cancellationToken = default)
     {
@@ -79,13 +81,30 @@ internal sealed class CertificateInventoryService(
             item.ReadErrors.Distinct(StringComparer.Ordinal).ToArray()))
             .OrderByDescending(item => item.NeedsAttention)
             .ThenBy(item => item.Metadata.DisplayName, StringComparer.OrdinalIgnoreCase).ToArray();
+        if (verifyWindowsTrust)
+        {
+            using WindowsTrustVerifier verifier = new();
+            for (int index = 0; index < inventory.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                inventory[index] = inventory[index] with { Trust = verifier.Verify(inventory[index].Metadata.RawData) };
+            }
+            // Передаём причины в журнал один раз за проверку, даже если один сбой затронул много строк.
+            foreach (string failure in inventory.SelectMany(item =>
+                new[] { item.Trust?.CurrentUser.Failure, item.Trust?.LocalMachine.Failure })
+                .OfType<string>().Distinct(StringComparer.Ordinal).Take(4))
+                log?.TryWrite("inventory.trust-error", failure);
+        }
         CertificateInventorySnapshot snapshot = new(DateTimeOffset.UtcNow, inventory,
             readStores, issues, observationCount);
         log?.TryWrite("inventory.completed",
             $"Хранилищ: {readStores.Count}; записей: {observationCount}; уникальных: {inventory.Length}; " +
             $"российских: {snapshot.RussianCount}; косвенных: {snapshot.PossibleCount}; " +
             $"неопределённых из истории: {snapshot.HistoricalUnknownCount}; ошибок: {issues.Count}; " +
-            $"полнота: {(snapshot.IsComplete ? "полная" : "неполная")}.");
+            $"полнота: {(snapshot.IsComplete ? "полная" : "неполная")}." +
+            (verifyWindowsTrust ? $" Проверка доверия: {(snapshot.TrustComplete ? "полная" : "неполная")}; " +
+                $"российских без ошибок в области компьютера: {snapshot.RussianAcceptedByComputerCount}; " +
+                $"явный запрет только у пользователя: {snapshot.UserOnlyDistrustedCount}." : ""));
         return snapshot;
 
         void AddIssue(string location, string message)

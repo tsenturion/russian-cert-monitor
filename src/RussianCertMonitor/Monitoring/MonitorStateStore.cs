@@ -111,7 +111,9 @@ internal sealed class MonitorStateStore(string filePath) : IMonitorStateStore
                 || metadata.SerialNumber is null || metadata.SubjectNameRaw is null
                 || metadata.IssuerNameRaw is null || metadata.RawData is null
                 || certificate!.Locations is null || certificate.Classification?.Reasons is null
-                || certificate.Classification.Errors is null || certificate.ReadErrors is null)
+                || certificate.Classification.Errors is null || certificate.ReadErrors is null
+                || (certificate.Trust is not null
+                    && (certificate.Trust.CurrentUser is null || certificate.Trust.LocalMachine is null)))
                 throw new InvalidDataException("Повреждены данные сертификата в снимке.");
             ValidateStores(certificate.Locations);
         }

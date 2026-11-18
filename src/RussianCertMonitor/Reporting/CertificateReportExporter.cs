@@ -17,7 +17,8 @@ internal static class CertificateReportExporter
     [
         "Наблюдения относятся к логическим хранилищам CurrentUser и LocalMachine.",
         "CurrentUser может наследовать сертификаты LocalMachine.",
-        "Disallowed действует для проверки сертификатов через Windows validation API; отдельные хранилища Firefox и Java не проверялись."
+        "Disallowed действует для проверки сертификатов через Windows validation API; отдельные хранилища Firefox и Java не проверялись.",
+        "Результаты цепочки Windows относятся к отдельным областям пользователя и компьютера. Проверка выполняется без сетевого получения сертификатов, проверки отзыва и проверки назначения."
     ];
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -60,6 +61,9 @@ internal static class CertificateReportExporter
                 $"российских: {snapshot.RussianCount}; косвенных: {snapshot.PossibleCount}; " +
                 $"ранее удалённых без установленной принадлежности: {snapshot.HistoricalUnknownCount}.");
             text.AppendLine($"Хранилищ: {snapshot.Stores.Count}; проблем сканирования: {snapshot.Issues.Count}.");
+            text.AppendLine($"Полная проверка доверия: {Bool(snapshot.TrustComplete)}. " +
+                $"Российских цепочек без ошибок в области компьютера: {snapshot.RussianAcceptedByComputerCount}. " +
+                $"Явный запрет только у пользователя: {snapshot.UserOnlyDistrustedCount}.");
             foreach (CertificateStoreDescriptor store in snapshot.Stores)
                 text.AppendLine($"  Хранилище: {store.Path}");
             foreach (InventoryIssue issue in snapshot.Issues)
@@ -73,6 +77,8 @@ internal static class CertificateReportExporter
                 text.AppendLine($"  Серийный номер: {item.Metadata.SerialNumber}");
                 text.AppendLine($"  Действует с: {item.Metadata.NotBefore:O}; до: {item.Metadata.NotAfter:O}");
                 text.AppendLine($"  Категория: {item.Category}; статус: {item.DisallowedStatus}");
+                text.AppendLine($"  Цепочка пользователя: {item.Trust?.CurrentUser.Details ?? "не проверено"}");
+                text.AppendLine($"  Цепочка компьютера: {item.Trust?.LocalMachine.Details ?? "не проверено"}");
                 text.AppendLine($"  Российский: {Bool(item.Classification.IsRussian)}; косвенные признаки: {Bool(item.Classification.IsPossibleRussian)}; ранее удалён: {Bool(item.Classification.WasPreviouslyDeleted)}");
                 text.AppendLine($"  Исключён из уведомлений: {Bool(item.Classification.IsExcluded)}");
                 foreach (CertificateStoreDescriptor location in item.Locations)
@@ -119,6 +125,9 @@ internal static class CertificateReportExporter
                 snapshot.RussianCount,
                 snapshot.PossibleCount,
                 snapshot.HistoricalUnknownCount,
+                snapshot.TrustComplete,
+                snapshot.RussianAcceptedByComputerCount,
+                snapshot.UserOnlyDistrustedCount,
                 Stores = snapshot.Stores.Select(item => new { item.Location, item.Name, item.Path }),
                 snapshot.Issues,
                 Certificates = snapshot.Certificates.Select(item => new
@@ -133,6 +142,7 @@ internal static class CertificateReportExporter
                     Locations = item.Locations.Select(location => new { location.Location, location.Name, location.Path }),
                     item.Category,
                     item.DisallowedStatus,
+                    WindowsTrust = item.Trust,
                     item.Classification.IsRussian,
                     item.Classification.IsPossibleRussian,
                     item.Classification.WasPreviouslyDeleted,

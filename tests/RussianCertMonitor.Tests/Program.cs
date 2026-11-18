@@ -9,6 +9,26 @@ internal static class Program
     {
         try
         {
+            if (args.Contains("--trust-copy-quarantine", StringComparer.Ordinal))
+            {
+                TrustCopyQuarantineChecks.Run();
+                Console.WriteLine("Проверки сохранения и восстановления копий пройдены.");
+                return 0;
+            }
+            if (args.Contains("--live-trust-copies-user", StringComparer.Ordinal)
+                || args.Contains("--live-trust-copies-machine", StringComparer.Ordinal))
+            {
+                bool machine = args.Contains("--live-trust-copies-machine", StringComparer.Ordinal);
+                using System.Security.Principal.WindowsIdentity identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                if (machine && !new System.Security.Principal.WindowsPrincipal(identity)
+                    .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
+                    throw new InvalidOperationException("Проверка копий LocalMachine требует запуска от администратора.");
+                var scope = machine ? System.Security.Cryptography.X509Certificates.StoreLocation.LocalMachine
+                    : System.Security.Cryptography.X509Certificates.StoreLocation.CurrentUser;
+                TrustCopyQuarantineChecks.RunLive(scope);
+                Console.WriteLine($"Системное хранилище {scope}: публичная запись удалена и восстановлена с исходными свойствами.");
+                return 0;
+            }
             if (args.Contains("--computer-block", StringComparer.Ordinal))
             {
                 ComputerDisallowedWorkflowChecks.Run();

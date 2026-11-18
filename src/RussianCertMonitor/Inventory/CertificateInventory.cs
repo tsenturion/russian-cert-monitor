@@ -25,7 +25,7 @@ internal sealed record CertificateStoreReadResult(
 internal sealed record InventoryCertificate(
     CertificateMetadata Metadata, IReadOnlyList<CertificateStoreDescriptor> Locations,
     CertificateClassification Classification, IReadOnlyList<string> ReadErrors,
-    WindowsTrustAssessment? Trust = null)
+    WindowsTrustAssessment? Trust = null, IReadOnlyList<StoreLocation>? BackupScopes = null)
 {
     public bool NeedsAttention => Classification.IsRussian || Classification.IsPossibleRussian
         || Classification.WasPreviouslyDeleted;
@@ -60,6 +60,8 @@ internal sealed record InventoryCertificate(
         LocalMachine.IsExplicitlyDistrusted: false
     };
 
+    public bool HasTrustCopyBackup => BackupScopes is { Count: > 0 };
+
     public string ValidityStatus(DateTimeOffset now) => Metadata.NotBefore is null || Metadata.NotAfter is null
         ? "Срок не прочитан"
         : now < Metadata.NotBefore ? "Ещё не действует"
@@ -73,6 +75,7 @@ internal sealed record CertificateInventorySnapshot(
     int ObservationCount)
 {
     public bool IsComplete => Issues.Count == 0;
+    public int ObservedCertificateCount => Certificates.Count(item => item.Locations.Count > 0);
     public int RussianCount => Certificates.Count(item => item.Classification.IsRussian);
     public int PossibleCount => Certificates.Count(item => !item.Classification.IsRussian
         && item.Classification.IsPossibleRussian);

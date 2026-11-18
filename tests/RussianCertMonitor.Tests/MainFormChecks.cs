@@ -133,6 +133,20 @@ internal static class MainFormChecks
             form.SetOperationBusy(true);
             Require(!import.Enabled && !remove.Enabled && !Button(form, "Проверить сейчас").Enabled,
                 "Во время операции импорт, изменение списка и проверка должны быть отключены.");
+            form.SetOperationBusy(false);
+            scope.SelectedIndex = 2;
+            InventoryCertificate backupOnly = machineBlocked with
+            {
+                Locations = [],
+                BackupScopes = [StoreLocation.LocalMachine]
+            };
+            form.ShowSnapshot(refreshed with { Certificates = [backupOnly], ObservationCount = 0 });
+            Require(blocked.Items.Count == 1 && ReferenceEquals(blocked.Items[0].Tag, backupOnly),
+                "Резервная копия компьютера должна остаться в чёрном списке после внешнего удаления Disallowed.");
+            blocked.Items[0].Selected = true;
+            remove.PerformClick();
+            Require(ReferenceEquals(callback, backupOnly),
+                "Кнопка снятия запрета должна открывать восстановление сохранённого сертификата.");
         }
         finally
         {

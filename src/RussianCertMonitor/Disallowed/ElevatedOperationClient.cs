@@ -27,6 +27,10 @@ internal sealed class PrivilegedProcessLauncher : IPrivilegedProcessLauncher
 internal sealed class ElevatedOperationClient(IPrivilegedProcessLauncher launcher)
 {
     public async Task<DisallowedReply> ExecuteAsync(DisallowedJob job, CancellationToken cancellationToken = default)
+        => await ExecuteAsync(job, cancellationToken, beforeApply: null);
+
+    public async Task<DisallowedReply> ExecuteAsync(DisallowedJob job, CancellationToken cancellationToken,
+        Func<Task>? beforeApply)
     {
         OperationProtocol.ValidateMachineJob(job);
         string nonce = Guid.NewGuid().ToString("N");
@@ -66,11 +70,17 @@ internal sealed class ElevatedOperationClient(IPrivilegedProcessLauncher launche
             if (!handshake.Confirmed)
                 return new DisallowedReply(true, null, null);
             cancellationToken.ThrowIfCancellationRequested();
+            // Перед снятием общего запрета клиент может восстановить копии в своей учётной записи.
+            if (beforeApply is not null)
+                await beforeApply();
+            cancellationToken.ThrowIfCancellationRequested();
             await OperationProtocol.WriteAsync(pipe, new DisallowedAuthorization(true), cancellationToken);
             DisallowedReply reply = await OperationProtocol.ReadAsync<DisallowedReply>(pipe, cancellationToken);
             if (reply.Result is { } result && (result.Location != job.Location || result.Operation != job.Operation
                 || !result.CertificateId.Equals(job.CertificateId, StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidDataException("Ответ операции не соответствует выбранному объекту.");
+            if (reply.TrustCopies is { Scope: not System.Security.Cryptography.X509Certificates.StoreLocation.LocalMachine })
+                throw new InvalidDataException("Ответ о копиях относится к другой области.");
             return reply;
         }
     }

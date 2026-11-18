@@ -70,7 +70,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
             }
         }
         monitor = new MonitorService(token => new CertificateInventoryService(new WindowsCertificateStoreProvider(),
-            new RussianCertificateClassifier(catalog, settings), log, verifyWindowsTrust: true).Scan(token),
+            new RussianCertificateClassifier(catalog, settings), log, verifyWindowsTrust: true,
+            includeTrustCopyArchive: true).Scan(token),
             new MonitorStateStore(AppPaths.MonitorStateFile), log);
         snapshot = monitor.RestoredSnapshot;
         snapshotRestored = snapshot is not null;

@@ -198,7 +198,7 @@ internal sealed class MainForm : Form
         string trustedRussian = snapshot.TrustComplete ? snapshot.RussianAcceptedByComputerCount.ToString()
             : $"подтверждено {snapshot.RussianAcceptedByComputerCount}, охват неполный";
         summary.Text = $"{completeness} · {snapshot.ScannedAt.ToLocalTime():dd.MM.yyyy HH:mm:ss}\r\n" +
-            $"Уникальных: {snapshot.Certificates.Count} · Наблюдений: {snapshot.ObservationCount} · " +
+            $"Уникальных в хранилищах: {snapshot.ObservedCertificateCount} · Наблюдений: {snapshot.ObservationCount} · " +
             $"Хранилищ прочитано: {snapshot.Stores.Count} · Российских: {snapshot.RussianCount} · " +
             $"Косвенные признаки: {snapshot.PossibleCount} · Из истории без принадлежности: {snapshot.HistoricalUnknownCount}\r\n" +
             $"Российских цепочек ПК без ошибок: {trustedRussian} · Явный запрет только у пользователя: {snapshot.UserOnlyDistrustedCount}";
@@ -255,8 +255,14 @@ internal sealed class MainForm : Form
             return false;
         IEnumerable<CertificateStoreDescriptor> locations = disallowedOnly
             ? certificate.Locations.Where(IsDisallowed) : certificate.Locations;
-        if (scopeFilter.SelectedIndex == 1 && !locations.Any(item => item.Location == StoreLocation.CurrentUser)
-            || scopeFilter.SelectedIndex == 2 && !locations.Any(item => item.Location == StoreLocation.LocalMachine))
+        StoreLocation? selectedScope = scopeFilter.SelectedIndex switch
+        {
+            1 => StoreLocation.CurrentUser,
+            2 => StoreLocation.LocalMachine,
+            _ => null
+        };
+        if (selectedScope is StoreLocation scope && !locations.Any(item => item.Location == scope)
+            && !(disallowedOnly && certificate.BackupScopes?.Contains(scope) == true))
             return false;
         string term = search.Text.Trim();
         if (term.Length == 0)
@@ -273,7 +279,7 @@ internal sealed class MainForm : Form
 
     private static bool HasDisallowed(InventoryCertificate certificate) =>
         certificate.HasDisallowedEntry(StoreLocation.CurrentUser)
-        || certificate.HasDisallowedEntry(StoreLocation.LocalMachine);
+        || certificate.HasDisallowedEntry(StoreLocation.LocalMachine) || certificate.HasTrustCopyBackup;
 
     private ListView? CurrentList => tabs.SelectedTab == matchesPage ? matches
         : tabs.SelectedTab == allPage ? allCertificates
@@ -313,6 +319,7 @@ internal sealed class MainForm : Form
             $"Идентификатор Windows: {metadata.CertificateId}\r\nСерийный номер: {metadata.SerialNumber}\r\n" +
             $"Владелец: {metadata.Subject}\r\nИздатель: {metadata.Issuer}\r\n" +
             $"Срок: {FormatDate(metadata.NotBefore)} — {FormatDate(metadata.NotAfter)}\r\n" +
+            (certificate.HasTrustCopyBackup ? $"Резервные копии: {string.Join(", ", certificate.BackupScopes!)}.\r\n" : "") +
             $"{certificate.DisallowedStatus}\r\nНаблюдается в логических хранилищах: " +
             string.Join("; ", certificate.Locations.Select(item => item.Path)) + "\r\n" +
             "Расположение в CurrentUser может быть унаследовано из LocalMachine.\r\n" +

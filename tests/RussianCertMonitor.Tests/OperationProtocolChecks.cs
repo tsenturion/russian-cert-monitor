@@ -47,6 +47,7 @@ internal static class OperationProtocolChecks
         VerifyPipePeer();
         VerifyHandshakeAsync(job, confirmed: false).GetAwaiter().GetResult();
         VerifyHandshakeAsync(job, confirmed: true).GetAwaiter().GetResult();
+        VerifyFailedRestoreAsync(job with { Operation = DisallowedOperation.Remove }).GetAwaiter().GetResult();
     }
 
     private static void VerifyPipePeer()
@@ -76,6 +77,25 @@ internal static class OperationProtocolChecks
             "Изменение должно разрешаться только после подтверждения и ответа основного процесса.");
     });
 
+    private static Task VerifyFailedRestoreAsync(DisallowedJob job) => Task.Run(async () =>
+    {
+        SimulatedLauncher launcher = new(confirmed: true, clientWillAbort: true);
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(5));
+        bool failed = false;
+        try
+        {
+            await new ElevatedOperationClient(launcher).ExecuteAsync(job, timeout.Token,
+                () => Task.FromException(new IOException("Резервная копия не восстановлена.")));
+        }
+        catch (IOException)
+        {
+            failed = true;
+        }
+        await launcher.Completion!.WaitAsync(timeout.Token);
+        Require(failed && !launcher.Authorized,
+            "Сбой восстановления копий пользователя должен оставить машинный запрет без изменений.");
+    });
+
     private static void Reject(Action action)
     {
         try { action(); }
@@ -93,7 +113,7 @@ internal static class OperationProtocolChecks
         public Process Start(string token, int parentId) => throw new Win32Exception(1223);
     }
 
-    private sealed class SimulatedLauncher(bool confirmed) : IPrivilegedProcessLauncher
+    private sealed class SimulatedLauncher(bool confirmed, bool clientWillAbort = false) : IPrivilegedProcessLauncher
     {
         public Task? Completion { get; private set; }
         public bool Authorized { get; private set; }
@@ -108,7 +128,9 @@ internal static class OperationProtocolChecks
                 OperationProtocol.ValidateMachineJob(received);
                 await OperationProtocol.WriteAsync(pipe, new DisallowedHandshake(confirmed, null));
                 if (!confirmed) return;
-                DisallowedAuthorization authorization = await OperationProtocol.ReadAsync<DisallowedAuthorization>(pipe);
+                DisallowedAuthorization authorization;
+                try { authorization = await OperationProtocol.ReadAsync<DisallowedAuthorization>(pipe); }
+                catch (IOException) when (clientWillAbort) { return; }
                 Authorized = authorization.Apply;
                 Require(Authorized, "Разрешение на применение не получено.");
                 await OperationProtocol.WriteAsync(pipe, new DisallowedReply(false,

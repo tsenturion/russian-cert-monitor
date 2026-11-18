@@ -4,13 +4,14 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using RussianCertMonitor.Certificates;
 using RussianCertMonitor.Classification;
+using RussianCertMonitor.Disallowed;
 using RussianCertMonitor.Infrastructure;
 
 namespace RussianCertMonitor.Inventory;
 
 internal sealed class CertificateInventoryService(
     ICertificateStoreProvider provider, RussianCertificateClassifier classifier, DiagnosticLog? log = null,
-    bool verifyWindowsTrust = false)
+    bool verifyWindowsTrust = false, bool includeTrustCopyArchive = false)
 {
     public CertificateInventorySnapshot Scan(CancellationToken cancellationToken = default)
     {
@@ -76,9 +77,47 @@ internal sealed class CertificateInventoryService(
             }
         }
 
+        if (includeTrustCopyArchive)
+        {
+            RegistryTrustCopyVault vault = new();
+            foreach (StoreLocation scope in new[] { StoreLocation.CurrentUser, StoreLocation.LocalMachine })
+            {
+                string archive = $"{scope}\\резервные копии";
+                IReadOnlyList<string> ids;
+                try { ids = vault.ListIds(scope); }
+                catch (Exception error) when (TrustCopyQuarantine.IsAccessError(error))
+                {
+                    AddIssue(archive, ErrorText.Describe(error));
+                    continue;
+                }
+                foreach (string id in ids)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        IReadOnlyList<TrustCopyBackup> copies = vault.Read(scope, id);
+                        if (copies.Count == 0)
+                            continue;
+                        if (!certificates.TryGetValue(id, out AccumulatedCertificate? item))
+                        {
+                            CertificateMetadata metadata = PublicCertificateData.FromDer(
+                                WindowsTrustCopyStore.DecodePublicCertificate(copies[0].Serialized)).Metadata;
+                            item = new(metadata, classifier.Classify(id, metadata.SubjectNameRaw, metadata.IssuerNameRaw));
+                            certificates.Add(id, item);
+                        }
+                        item.BackupScopes.Add(scope);
+                    }
+                    catch (Exception error) when (TrustCopyQuarantine.IsAccessError(error))
+                    {
+                        AddIssue(archive, $"{id}: {ErrorText.Describe(error)}");
+                    }
+                }
+            }
+        }
+
         InventoryCertificate[] inventory = certificates.Values.Select(item => new InventoryCertificate(
             item.Metadata, item.Locations.ToArray(), item.Classification,
-            item.ReadErrors.Distinct(StringComparer.Ordinal).ToArray()))
+            item.ReadErrors.Distinct(StringComparer.Ordinal).ToArray(), BackupScopes: item.BackupScopes.ToArray()))
             .OrderByDescending(item => item.NeedsAttention)
             .ThenBy(item => item.Metadata.DisplayName, StringComparer.OrdinalIgnoreCase).ToArray();
         if (verifyWindowsTrust)
@@ -98,7 +137,7 @@ internal sealed class CertificateInventoryService(
         CertificateInventorySnapshot snapshot = new(DateTimeOffset.UtcNow, inventory,
             readStores, issues, observationCount);
         log?.TryWrite("inventory.completed",
-            $"Хранилищ: {readStores.Count}; записей: {observationCount}; уникальных: {inventory.Length}; " +
+            $"Хранилищ: {readStores.Count}; записей: {observationCount}; уникальных: {snapshot.ObservedCertificateCount}; " +
             $"российских: {snapshot.RussianCount}; косвенных: {snapshot.PossibleCount}; " +
             $"неопределённых из истории: {snapshot.HistoricalUnknownCount}; ошибок: {issues.Count}; " +
             $"полнота: {(snapshot.IsComplete ? "полная" : "неполная")}." +
@@ -125,5 +164,6 @@ internal sealed class CertificateInventoryService(
         public CertificateClassification Classification { get; } = classification;
         public List<CertificateStoreDescriptor> Locations { get; } = [];
         public List<string> ReadErrors { get; } = [];
+        public List<StoreLocation> BackupScopes { get; } = [];
     }
 }

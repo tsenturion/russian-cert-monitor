@@ -90,7 +90,7 @@ internal sealed class MonitorStateStore(string filePath) : IMonitorStateStore
             throw new InvalidDataException("Неподдерживаемый формат состояния мониторинга.");
         CertificateInventorySnapshot snapshot = document.Snapshot;
         if (snapshot.Certificates is null || snapshot.Stores is null || snapshot.Issues is null
-            || snapshot.ObservationCount < snapshot.Certificates.Count)
+            || snapshot.ObservationCount < snapshot.Certificates.Count(item => item?.Locations is { Count: > 0 }))
             throw new InvalidDataException("Повреждён снимок хранилищ.");
 
         HashSet<string> ids = new(StringComparer.OrdinalIgnoreCase);

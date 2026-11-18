@@ -116,6 +116,7 @@ internal sealed class MonitorService
             if (!previous.TryGetValue(current.Metadata.CertificateId, out InventoryCertificate? old)
                 || !MetadataEqual(old.Metadata, current.Metadata) || !LocationsEqual(old.Locations, current.Locations)
                 || old.Trust != current.Trust
+                || !(old.BackupScopes ?? []).SequenceEqual(current.BackupScopes ?? [])
                 || old.Classification.IsRussian != current.Classification.IsRussian
                 || old.Classification.IsPossibleRussian != current.Classification.IsPossibleRussian
                 || old.Classification.WasPreviouslyDeleted != current.Classification.WasPreviouslyDeleted

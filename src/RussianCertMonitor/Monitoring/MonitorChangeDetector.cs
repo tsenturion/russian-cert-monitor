@@ -14,6 +14,7 @@ internal static class MonitorChangeDetector
         List<MonitorChange> changes = [];
 
         foreach (InventoryCertificate certificate in snapshot.Certificates
+            .Where(item => item.Locations.Count > 0)
             .OrderBy(item => item.Metadata.CertificateId, StringComparer.OrdinalIgnoreCase)
             .ThenBy(item => item.Metadata.CertificateId, StringComparer.Ordinal))
         {
@@ -71,7 +72,7 @@ internal static class MonitorChangeDetector
                 TrackedMatch disappeared = old with { Locations = Array.Empty<CertificateStoreDescriptor>() };
                 nextMatches[old.CertificateId] = disappeared;
                 bool stillObserved = snapshot.Certificates.Any(item =>
-                    item.Metadata.CertificateId.Equals(old.CertificateId, StringComparison.OrdinalIgnoreCase));
+                    item.Locations.Count > 0 && item.Metadata.CertificateId.Equals(old.CertificateId, StringComparison.OrdinalIgnoreCase));
                 changes.Add(new MonitorChange(old.HasComputerDisallowed ? MonitorChangeKind.ComputerBlockRemoved
                     : stillObserved ? MonitorChangeKind.NoLongerMatches : MonitorChangeKind.Disappeared, disappeared));
             }

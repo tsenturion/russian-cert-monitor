@@ -106,7 +106,7 @@ internal static class ComputerDisallowedWorkflowChecks
             backend.Add(StoreLocation.CurrentUser, data.Metadata.RawData);
             DisallowedManager manager = new(backend);
             ComputerDisallowedWorkflow workflow = new(manager,
-                (job, _) => Task.FromResult(reply(job)), verify: _ => Neither);
+                (job, _, _) => Task.FromResult(reply(job)), verify: _ => Neither);
             ComputerDisallowedChange? result = null;
             try
             {
@@ -149,7 +149,7 @@ internal static class ComputerDisallowedWorkflowChecks
         Func<WindowsTrustAssessment> trust)
     {
         DisallowedManager manager = new(backend);
-        return new(manager, (job, _) =>
+        return new(manager, (job, _, _) =>
         {
             jobs.Add(job);
             DisallowedResult result = manager.Execute(manager.Preview(job.Operation, job.Location,

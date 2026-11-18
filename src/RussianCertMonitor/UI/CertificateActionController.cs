@@ -76,7 +76,8 @@ internal sealed class CertificateActionController(
 
             actionContext = new(certificate.Metadata.CertificateId, "LocalMachine\\Disallowed", operation.ToString());
             attempted = true;
-            ComputerDisallowedWorkflow workflow = new(manager, elevated.ExecuteAsync, log);
+            ComputerDisallowedWorkflow workflow = new(manager, elevated.ExecuteAsync, log,
+                quarantine: TrustCopyQuarantine.Windows());
             ComputerDisallowedChange? change = await workflow.ChangeAsync(operation, certificate, cancellationToken);
             if (change is null)
                 return;
@@ -100,10 +101,12 @@ internal sealed class CertificateActionController(
                 message += "\r\nЗапись остаётся видимой в логическом Disallowed компьютера; возможно действие политики Windows.";
             message += $"\r\n\r\nЦепочка Windows (пользователь): {change.Trust.CurrentUser.Details}" +
                 $"\r\nЦепочка Windows (компьютер): {change.Trust.LocalMachine.Details}";
+            bool copiesIncomplete = AppendCopyResult(ref message, operation, change.ComputerCopies)
+                | AppendCopyResult(ref message, operation, change.UserCopies);
             if (!change.IsConfirmed)
                 message += "\r\nОперация подтверждена не полностью. Состояние записей и результаты Windows приведены выше.";
             message += "\r\nПриложения с собственной политикой доверия могут оценивать сертификат иначе.";
-            bool verificationWarning = !change.IsConfirmed || change.UserCleanupError is not null;
+            bool verificationWarning = !change.IsConfirmed || copiesIncomplete;
             MessageBox.Show(owner(), message, "RussianCertMonitor", MessageBoxButtons.OK,
                 verificationWarning ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
         }
@@ -118,6 +121,18 @@ internal sealed class CertificateActionController(
             if (attempted && !cancellationToken.IsCancellationRequested)
                 await refresh();
         }
+    }
+
+    private static bool AppendCopyResult(ref string message, DisallowedOperation operation, TrustCopyChange? copies)
+    {
+        if (copies is null)
+            return false;
+        string action = operation == DisallowedOperation.Add ? "Копии сохранены и убраны" : "Копии восстановлены";
+        if (copies.ChangedStores.Length > 0)
+            message += $"\r\n{action} ({copies.Scope}): {string.Join(", ", copies.ChangedStores)}.";
+        if (copies.Issues.Length > 0)
+            message += $"\r\nНе все копии обработаны ({copies.Scope}): {string.Join("; ", copies.Issues)}";
+        return copies.Issues.Length > 0;
     }
 
     private void ShowError(string message, Exception error, LogContext? context = null)

@@ -7,7 +7,8 @@ using RussianCertMonitor.Infrastructure;
 namespace RussianCertMonitor.Disallowed;
 
 internal sealed record ComputerDisallowedChange(DisallowedResult Computer, DisallowedResult? UserCleanup,
-    string? UserCleanupError, WindowsTrustAssessment Trust)
+    string? UserCleanupError, WindowsTrustAssessment Trust,
+    TrustCopyChange? ComputerCopies = null, TrustCopyChange? UserCopies = null)
 {
     public bool IsConfirmed => Computer.Operation == DisallowedOperation.Add
         ? Computer.OwnPresentAfter && UserCleanupError is null && Trust.CurrentUser.IsExplicitlyDistrusted
@@ -19,8 +20,9 @@ internal sealed record ComputerDisallowedChange(DisallowedResult Computer, Disal
 }
 
 internal sealed class ComputerDisallowedWorkflow(DisallowedManager manager,
-    Func<DisallowedJob, CancellationToken, Task<DisallowedReply>> executeOnComputer,
-    DiagnosticLog? log = null, Func<byte[], WindowsTrustAssessment>? verify = null)
+    Func<DisallowedJob, CancellationToken, Func<Task>?, Task<DisallowedReply>> executeOnComputer,
+    DiagnosticLog? log = null, Func<byte[], WindowsTrustAssessment>? verify = null,
+    TrustCopyQuarantine? quarantine = null)
 {
     private const string MachineStore = "LocalMachine\\Disallowed";
 
@@ -33,7 +35,11 @@ internal sealed class ComputerDisallowedWorkflow(DisallowedManager manager,
         log?.TryWrite("disallowed.elevation-requested",
             $"Запрошено изменение чёрного списка компьютера: {operation}; ID={id}.",
             context: new(id, MachineStore, operation.ToString()));
-        DisallowedReply reply = await executeOnComputer(job, token).ConfigureAwait(false);
+        TrustCopyChange? userCopies = null;
+        Func<Task>? beforeApply = operation == DisallowedOperation.Remove && quarantine is not null
+            ? () => Task.Run(() => userCopies = RestoreUserCopies(certificate), token) : null;
+        DisallowedReply reply = await executeOnComputer(job, token, beforeApply).ConfigureAwait(false);
+        RecordCopies(id, operation, reply.TrustCopies);
         if (reply.Cancelled)
         {
             log?.TryWrite("disallowed.cancelled", "Операция отменена в UAC или окне подтверждения.",
@@ -53,14 +59,52 @@ internal sealed class ComputerDisallowedWorkflow(DisallowedManager manager,
             $"Операция={operation}; область=LocalMachine; ID={id}; изменено={computer.Changed}; " +
             $"своё={computer.OwnPresentAfter}; логическое={computer.LogicalPresentAfter}.",
             context: new(id, MachineStore, $"{operation}; changed={computer.Changed}; ownPresent={computer.OwnPresentAfter}; logicalPresent={computer.LogicalPresentAfter}"));
-        return await Task.Run(() => Complete(computer, certificate)).ConfigureAwait(false);
+        return await Task.Run(() => Complete(computer, certificate, reply.TrustCopies, userCopies)).ConfigureAwait(false);
     }
 
-    private ComputerDisallowedChange Complete(DisallowedResult computer, PublicCertificateData certificate)
+    private TrustCopyChange? RestoreUserCopies(PublicCertificateData certificate)
+    {
+        string id = certificate.Metadata.CertificateId;
+        if (quarantine?.HasBackup(StoreLocation.CurrentUser, id) != true)
+            return null;
+        EnsureComputerBlock(certificate);
+        TrustCopyChange restored = quarantine.Restore(StoreLocation.CurrentUser, id);
+        RecordCopies(id, DisallowedOperation.Remove, restored);
+        if (restored.Issues.Length > 0)
+            throw new InvalidOperationException("Копии пользователя восстановлены не полностью. Запрет остаётся в силе. "
+                + string.Join("; ", restored.Issues));
+        return restored;
+    }
+
+    private void EnsureComputerBlock(PublicCertificateData certificate)
+    {
+        DisallowedPreview machine = manager.Preview(DisallowedOperation.Remove, StoreLocation.LocalMachine, certificate);
+        if (!machine.OwnPresent || !machine.Certificate.Metadata.RawData.AsSpan().SequenceEqual(certificate.Metadata.RawData)
+            || !CheckTrust(certificate).LocalMachine.IsExplicitlyDistrusted)
+            throw new InvalidOperationException("Подтверждённый запрет компьютера отсутствует. Сначала снова добавьте сертификат в чёрный список.");
+    }
+
+    private ComputerDisallowedChange Complete(DisallowedResult computer, PublicCertificateData certificate,
+        TrustCopyChange? machineCopies, TrustCopyChange? userCopies)
     {
         WindowsTrustAssessment trust = CheckTrust(certificate);
         DisallowedResult? user = null;
         string? cleanupError = null;
+
+        if (computer.Operation == DisallowedOperation.Add && quarantine is not null
+            && trust.CurrentUser.IsExplicitlyDistrusted && trust.LocalMachine.IsExplicitlyDistrusted)
+        {
+            try
+            {
+                EnsureComputerBlock(certificate);
+                userCopies = quarantine.Isolate(StoreLocation.CurrentUser, computer.CertificateId);
+            }
+            catch (Exception error) when (TrustCopyQuarantine.IsAccessError(error))
+            {
+                userCopies = new(StoreLocation.CurrentUser, [], [ErrorText.Describe(error)]);
+            }
+            RecordCopies(computer.CertificateId, computer.Operation, userCopies);
+        }
 
         // Прежний запрет пользователя можно убрать лишь после подтверждения запрета компьютера.
         if (computer.Operation == DisallowedOperation.Remove
@@ -87,14 +131,25 @@ internal sealed class ComputerDisallowedWorkflow(DisallowedManager manager,
             }
         }
 
-        if (user is not null || cleanupError is not null)
+        if (user is not null || cleanupError is not null || userCopies is not null)
             trust = CheckTrust(certificate);
-        ComputerDisallowedChange change = new(computer, user, cleanupError, trust);
+        ComputerDisallowedChange change = new(computer, user, cleanupError, trust, machineCopies, userCopies);
         log?.TryWrite("disallowed.trust-verified",
             $"Операция={computer.Operation}; ID={computer.CertificateId}; подтверждено={change.IsConfirmed}; " +
             $"пользователь={trust.CurrentUser.Details}; компьютер={trust.LocalMachine.Details}.",
             context: new(computer.CertificateId, MachineStore, change.IsConfirmed ? "confirmed" : "warning"));
         return change;
+    }
+
+    private void RecordCopies(string id, DisallowedOperation operation, TrustCopyChange? copies)
+    {
+        if (copies is null || (copies.ChangedStores.Length == 0 && copies.Issues.Length == 0))
+            return;
+        string action = operation == DisallowedOperation.Add ? "Сохранены и убраны копии" : "Восстановлены копии";
+        log?.TryWrite(copies.Issues.Length == 0 ? "disallowed.copies" : "disallowed.copies-error",
+            $"{action}: {copies.Scope}, ID={id}, хранилища: {string.Join(", ", copies.ChangedStores)}. " +
+            string.Join("; ", copies.Issues),
+            context: new(id, copies.Scope.ToString(), operation.ToString()));
     }
 
     private WindowsTrustAssessment CheckTrust(PublicCertificateData certificate)

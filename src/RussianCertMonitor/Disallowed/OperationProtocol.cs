@@ -13,7 +13,8 @@ internal sealed record DisallowedJob(int SchemaVersion, DisallowedOperation Oper
     StoreLocation Location, string CertificateId, byte[] CertificateData);
 internal sealed record DisallowedHandshake(bool Confirmed, string? Error);
 internal sealed record DisallowedAuthorization(bool Apply);
-internal sealed record DisallowedReply(bool Cancelled, DisallowedResult? Result, string? Error);
+internal sealed record DisallowedReply(bool Cancelled, DisallowedResult? Result, string? Error,
+    TrustCopyChange? TrustCopies = null);
 
 internal static class OperationProtocol
 {

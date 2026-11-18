@@ -77,6 +77,8 @@ internal static class CertificateReportExporter
                 text.AppendLine($"  Серийный номер: {item.Metadata.SerialNumber}");
                 text.AppendLine($"  Действует с: {item.Metadata.NotBefore:O}; до: {item.Metadata.NotAfter:O}");
                 text.AppendLine($"  Категория: {item.Category}; статус: {item.DisallowedStatus}");
+                if (item.HasTrustCopyBackup)
+                    text.AppendLine($"  Резервные копии: {string.Join(", ", item.BackupScopes!)}");
                 text.AppendLine($"  Цепочка пользователя: {item.Trust?.CurrentUser.Details ?? "не проверено"}");
                 text.AppendLine($"  Цепочка компьютера: {item.Trust?.LocalMachine.Details ?? "не проверено"}");
                 text.AppendLine($"  Российский: {Bool(item.Classification.IsRussian)}; косвенные признаки: {Bool(item.Classification.IsPossibleRussian)}; ранее удалён: {Bool(item.Classification.WasPreviouslyDeleted)}");
@@ -142,6 +144,7 @@ internal static class CertificateReportExporter
                     Locations = item.Locations.Select(location => new { location.Location, location.Name, location.Path }),
                     item.Category,
                     item.DisallowedStatus,
+                    item.BackupScopes,
                     WindowsTrust = item.Trust,
                     item.Classification.IsRussian,
                     item.Classification.IsPossibleRussian,
